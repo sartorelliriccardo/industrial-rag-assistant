@@ -10,7 +10,7 @@ A general-purpose LLM asked "what is the tightening torque of the impeller nut?"
 
 ## Features
 
-- Upload one or more PDFs in a Streamlit UI (processed in memory, never stored).
+- Upload one or more PDFs in a Streamlit UI (processed in memory, never stored), with a switchable Italian / English interface (`src/rag_assistant/i18n.py`).
 - Page-aware extraction: every passage keeps its document name and page number.
 - Configurable chunking, multilingual embeddings (Italian/English), exact FAISS vector search.
 - Answers restricted to the retrieved evidence, with citations checked against the passages that were really retrieved.
@@ -18,7 +18,7 @@ A general-purpose LLM asked "what is the tightening torque of the impeller nut?"
 - Defences against prompt injection hidden in PDFs and conflict reporting between documents.
 - Retrieved passages with similarity scores are always shown, so the user can check the evidence.
 - Two interchangeable answer engines: an **offline extractive engine** (no API key) and **Claude** via the Anthropic API.
-- 48 automated tests that run with no network and no API key, plus a repeatable evaluation.
+- 96 automated tests that run with no network and no API key, plus a repeatable evaluation.
 
 ## Quick start
 
@@ -56,7 +56,7 @@ The Claude engine is implemented and unit-tested against a fake provider, but **
 ### Tests, lint, evaluation
 
 ```bash
-pytest                         # 48 tests, offline, no API key
+pytest                         # 96 tests, offline, no API key
 ruff check . && ruff format --check .
 python -m rag_assistant.evaluation --out eval/results.json    # needs the embedding model
 python scripts/make_sample_pdfs.py                            # regenerate the sample PDFs
@@ -96,6 +96,7 @@ flowchart LR
 | `llm.py` | `LLMProvider` protocol; `AnthropicProvider`, `ExtractiveProvider` |
 | `generation.py` | Evidence selection, prompt building, citation verification |
 | `pipeline.py` | Facade used by the UI and the evaluation |
+| `i18n.py` | Italian / English interface strings (a test checks both languages have the same keys) |
 | `evaluation.py` | Repeatable evaluation with four separate metrics |
 
 ## Design decisions

@@ -1,4 +1,4 @@
-"""Streamlit UI: upload PDFs, ask questions, inspect answer, citations and evidence."""
+"""Streamlit UI (Italian / English): upload PDFs, ask questions, inspect the evidence."""
 
 import sys
 from pathlib import Path
@@ -13,8 +13,14 @@ import streamlit as st
 
 from rag_assistant.config import DEFAULT_MIN_SCORE, DEFAULT_TOP_K, get_chunk_settings
 from rag_assistant.embeddings import FastEmbedEmbedder
+from rag_assistant.i18n import DEFAULT_LANGUAGE, LANGUAGES, t
 from rag_assistant.llm import get_provider
-from rag_assistant.pdf_loader import PdfError
+from rag_assistant.pdf_loader import (
+    PdfCorruptedError,
+    PdfError,
+    PdfNoTextError,
+    PdfNotFoundError,
+)
 from rag_assistant.pipeline import RagPipeline
 
 SAMPLE_DIR = ROOT / "data" / "sample_pdfs"
@@ -41,38 +47,53 @@ def new_pipeline(provider_name: str, api_key: str | None) -> RagPipeline:
     )
 
 
+def pdf_error_message(exc: PdfError, name: str) -> str:
+    if isinstance(exc, PdfNoTextError):
+        key = "err_no_text"
+    elif isinstance(exc, PdfCorruptedError):
+        key = "err_corrupted"
+    elif isinstance(exc, PdfNotFoundError):
+        key = "err_not_found"
+    else:
+        key = "err_pdf"
+    return t(lang, key, name=name)
+
+
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
-    st.header("Settings")
+    lang = st.radio(
+        "Lingua / Language",
+        list(LANGUAGES),
+        format_func=LANGUAGES.get,
+        index=list(LANGUAGES).index(DEFAULT_LANGUAGE),
+        horizontal=True,
+        key="lang",
+    )
+    st.header(t(lang, "settings"))
     provider_name = st.radio(
-        "Answer engine",
+        t(lang, "engine"),
         ["extractive", "anthropic"],
-        format_func=lambda x: (
-            "Offline (quotes the documents, no API key)"
-            if x == "extractive"
-            else "Claude (API key required)"
-        ),
+        format_func=lambda x: t(lang, f"engine_{x}"),
     )
     api_key = None
     if provider_name == "anthropic":
-        api_key = st.text_input("Anthropic API key", type="password", help="Kept in memory only.")
+        api_key = st.text_input(t(lang, "api_key"), type="password", help=t(lang, "api_key_help"))
 
-    with st.expander("Retrieval parameters"):
+    with st.expander(t(lang, "params")):
         size, overlap = get_chunk_settings()
-        st.number_input("Chunk size (chars)", 100, 4000, size, 50, key="chunk_size")
-        st.number_input("Chunk overlap (chars)", 0, 1000, overlap, 10, key="chunk_overlap")
-        st.number_input("Passages retrieved (top-k)", 1, 20, DEFAULT_TOP_K, key="top_k")
-        st.slider("Minimum similarity", 0.0, 0.9, DEFAULT_MIN_SCORE, 0.05, key="min_score")
-        st.caption("Changing chunk size/overlap applies to documents added afterwards.")
+        st.number_input(t(lang, "chunk_size"), 100, 4000, size, 50, key="chunk_size")
+        st.number_input(t(lang, "chunk_overlap"), 0, 1000, overlap, 10, key="chunk_overlap")
+        st.number_input(t(lang, "top_k"), 1, 20, DEFAULT_TOP_K, key="top_k")
+        st.slider(t(lang, "min_score"), 0.0, 0.9, DEFAULT_MIN_SCORE, 0.05, key="min_score")
+        st.caption(t(lang, "params_note"))
 
     st.divider()
-    st.subheader("Documents")
-    uploads = st.file_uploader("Upload PDF manuals", type="pdf", accept_multiple_files=True)
-    use_samples = st.button("Load synthetic sample manuals")
-    st.caption(
-        "Files are processed in memory and are not stored. "
-        "Do not upload confidential documents to a public demo."
+    st.subheader(t(lang, "documents"))
+    uploads = st.file_uploader(
+        t(lang, "upload"), type="pdf", accept_multiple_files=True, key="uploader"
     )
+    use_samples = st.button(t(lang, "load_samples"))
+    st.caption(t(lang, "privacy"))
 
 # ---------------------------------------------------------------- state
 config_key = (provider_name, api_key)
@@ -85,10 +106,9 @@ if "pipeline" not in st.session_state or st.session_state.get("config_key") != c
         for name, data in previous.items():  # re-index when only the engine changed
             st.session_state.pipeline.add_pdf_bytes(data, name)
             st.session_state.files[name] = data
-    except ValueError as exc:  # e.g. missing API key
+    except ValueError:  # missing API key
         st.session_state.pipeline = None
         st.session_state.config_key = None
-        st.sidebar.warning(str(exc))
 
 pipeline: RagPipeline | None = st.session_state.get("pipeline")
 files: dict[str, bytes] = st.session_state.setdefault("files", {})
@@ -96,12 +116,12 @@ files: dict[str, bytes] = st.session_state.setdefault("files", {})
 
 def add_file(name: str, data: bytes) -> None:
     try:
-        with st.spinner(f"Indexing {name}..."):
+        with st.spinner(t(lang, "indexing", name=name)):
             n = pipeline.add_pdf_bytes(data, name)
         files[name] = data
-        st.sidebar.success(f"{name}: {n} passages indexed")
+        st.sidebar.success(t(lang, "indexed", name=name, n=n))
     except PdfError as exc:
-        st.sidebar.error(str(exc))
+        st.sidebar.error(pdf_error_message(exc, name))
 
 
 if pipeline:
@@ -115,75 +135,71 @@ if pipeline:
                 add_file(pdf.name, pdf.read_bytes())
 
 # ---------------------------------------------------------------- main
-st.title("🏭 Industrial RAG Assistant")
-st.caption(
-    "Ask questions about your technical manuals. Every answer cites document and page; "
-    "if the documents do not contain the answer, the assistant says so."
-)
+st.title(f"🏭 {t(lang, 'title')}")
+st.caption(t(lang, "subtitle"))
 
 if pipeline is None:
-    st.info("Enter an API key in the sidebar, or switch to the offline answer engine.")
+    st.info(t(lang, "need_key"))
     st.stop()
 
 if not files:
-    st.info("Upload one or more PDFs in the sidebar, or load the sample manuals, to start.")
+    st.info(t(lang, "start_hint"))
     st.stop()
 
-with st.expander(f"Indexed documents ({len(files)}) - {pipeline.chunk_count} passages"):
+with st.expander(t(lang, "indexed_docs", n=len(files), chunks=pipeline.chunk_count)):
     for name in list(files):
         col1, col2 = st.columns([6, 1])
         col1.write(f"📄 {name}")
-        if col2.button("Remove", key=f"rm_{name}"):
+        if col2.button(t(lang, "remove"), key=f"rm_{name}"):
             pipeline.remove(name)
             del files[name]
             st.rerun()
 
-question = st.text_input(
-    "Your question",
-    placeholder="e.g. What is the tightening torque of the impeller nut?",
-)
+question = st.text_input(t(lang, "question"), placeholder=t(lang, "placeholder"), key="question")
 
 if question:
     pipeline.top_k = st.session_state.get("top_k", DEFAULT_TOP_K)
     pipeline.min_score = st.session_state.get("min_score", DEFAULT_MIN_SCORE)
     try:
-        with st.spinner("Searching the documents..."):
+        with st.spinner(t(lang, "searching")):
             answer = pipeline.ask(question)
     except Exception as exc:  # network/API errors must not crash the page
-        st.error(f"Could not get an answer: {exc}")
+        st.error(t(lang, "answer_error", error=exc))
         st.stop()
 
     if answer.status == "answered":
         st.success(answer.text)
     elif answer.status == "insufficient":
-        st.warning(answer.text)
+        st.warning(t(lang, "insufficient"))
     else:
-        st.warning(
-            "The model answered without valid citations, so the answer cannot be verified:\n\n"
-            + answer.text
-        )
+        st.warning(f"{t(lang, 'uncited')}\n\n{answer.text}")
 
     if answer.citations:
-        st.subheader("Sources")
+        st.subheader(t(lang, "sources"))
         for c in answer.citations:
-            st.markdown(f"- **{c.doc_name}**, page {c.page_number}")
+            st.markdown("- " + t(lang, "source_line", doc=c.doc_name, page=c.page_number))
     if answer.invalid_citations:
-        st.error(f"The model cited non-existent sources: {', '.join(answer.invalid_citations)}")
+        st.error(t(lang, "invalid_citations", ids=", ".join(answer.invalid_citations)))
     if answer.flagged:
-        st.warning(
-            f"{len(answer.flagged)} passage(s) looked like instructions aimed at the AI "
-            "(possible prompt injection) and were excluded from the answer."
-        )
+        st.warning(t(lang, "flagged", n=len(answer.flagged)))
 
-    st.subheader("Retrieved passages")
-    st.caption("Check the evidence yourself. Score = cosine similarity (higher is closer).")
+    st.subheader(t(lang, "passages"))
+    st.caption(t(lang, "passages_help"))
 
     def key(r):
         return (r.chunk.doc_name, r.chunk.page_number, r.chunk.chunk_index)
 
     used = {key(r) for r in answer.evidence}
     for r in pipeline.search(question):
-        tag = "sent to answer engine" if key(r) in used else "not sent (low score/flagged)"
-        where = f"{r.chunk.doc_name}, p. {r.chunk.page_number}"
-        with st.expander(f"#{r.rank} · {where} · score {r.score:.2f} · {tag}"):
+        tag = t(lang, "tag_used" if key(r) in used else "tag_unused")
+        title = t(
+            lang,
+            "passage_title",
+            rank=r.rank,
+            doc=r.chunk.doc_name,
+            page=r.chunk.page_number,
+            score=r.score,
+            tag=tag,
+        )
+        with st.expander(title):
             st.write(r.chunk.text)
