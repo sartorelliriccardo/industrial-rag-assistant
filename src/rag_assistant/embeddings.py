@@ -8,6 +8,11 @@ import numpy as np
 
 from rag_assistant.config import EMBEDDING_MODEL, enable_system_certificates
 
+# 8-bit quantised ONNX export of the same sentence-transformers model (Apache-2.0).
+QUANTIZED_MODEL_REPO = "Xenova/paraphrase-multilingual-MiniLM-L12-v2"
+QUANTIZED_MODEL_FILE = "onnx/model_quantized.onnx"
+QUANTIZED_MODEL_NAME = "custom/paraphrase-multilingual-MiniLM-L12-v2-int8"
+
 
 class Embedder(Protocol):
     def embed(self, texts: list[str]) -> np.ndarray:
@@ -22,18 +27,42 @@ def _normalize(vectors: np.ndarray) -> np.ndarray:
 
 
 class FastEmbedEmbedder:
-    """Multilingual sentence embeddings (ONNX, no PyTorch). Model is downloaded on first use."""
+    """Multilingual sentence embeddings (ONNX, no PyTorch). Model is downloaded on first use.
 
-    def __init__(self, model_name: str = EMBEDDING_MODEL):
+    By default it uses an 8-bit quantised copy of the model: about 140 MB less memory
+    than the full-precision one (measured: +424 MB vs +560 MB) with embeddings that
+    match the original (mean cosine 0.994 on a small sample). That is what lets the app
+    fit in the ~1 GB of a free Streamlit Cloud instance. `quantized=False` gives the
+    original model.
+    """
+
+    def __init__(self, model_name: str = EMBEDDING_MODEL, quantized: bool = True):
         self.model_name = model_name
+        self.quantized = quantized
         self._model = None
 
     def _load(self):
         if self._model is None:
             enable_system_certificates()
             from fastembed import TextEmbedding
+            from fastembed.common.model_description import ModelSource, PoolingType
 
-            self._model = TextEmbedding(self.model_name)
+            name = self.model_name
+            if self.quantized:
+                name = QUANTIZED_MODEL_NAME
+                try:
+                    TextEmbedding.add_custom_model(
+                        model=name,
+                        pooling=PoolingType.MEAN,
+                        normalization=True,
+                        sources=ModelSource(hf=QUANTIZED_MODEL_REPO),
+                        dim=384,
+                        model_file=QUANTIZED_MODEL_FILE,
+                    )
+                except ValueError:  # already registered in this process
+                    pass
+            # no memory arena: the arena keeps freed buffers around, costing extra RAM
+            self._model = TextEmbedding(name, enable_cpu_mem_arena=False)
         return self._model
 
     def embed(self, texts: list[str]) -> np.ndarray:

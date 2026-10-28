@@ -39,7 +39,7 @@ MAX_PREVIEWS = 3
 st.set_page_config(page_title="Industrial RAG Assistant", page_icon="🏭", layout="wide")
 
 
-@st.cache_resource(show_spinner="Loading embedding model (first run downloads ~220 MB)...")
+@st.cache_resource(show_spinner="Loading embedding model (first run downloads ~120 MB)...")
 def get_embedder() -> FastEmbedEmbedder:
     embedder = FastEmbedEmbedder()
     embedder.embed(["warm up"])  # load the model once, here, with a spinner
@@ -254,33 +254,69 @@ def render_previews(answer) -> None:
             st.image(png, caption=t(lang, caption_key, doc=c.doc_name, page=c.page_number))
 
 
-def flow_diagram() -> str:
-    def label(key: str) -> str:
-        return t(lang, key).replace('"', "'")
+def architecture_diagram() -> str:
+    """Two-flow diagram: each node shows the step and the module that implements it."""
 
-    return f"""
-    digraph {{
-      rankdir=LR; bgcolor="transparent";
-      node [shape=box, style="rounded,filled", fillcolor="#374151", fontcolor="white",
-            color="#6b7280", fontname="Helvetica"];
-      edge [color="#9ca3af", fontcolor="#9ca3af", fontname="Helvetica"];
-      pdf [label="{label("flow_pdf")}"]; chunks [label="{label("flow_chunks")}"];
-      vectors [label="{label("flow_vectors")}"]; index [label="{label("flow_index")}"];
-      question [label="{label("flow_question")}"]; retrieval [label="{label("flow_retrieval")}"];
-      check [label="{label("flow_check")}", shape=diamond];
-      engine [label="{label("flow_engine")}"]; verify [label="{label("flow_verify")}"];
-      answer [label="{label("flow_answer")}", fillcolor="#166534"];
-      no [label="{label("flow_no")}", fillcolor="#92400e"];
-      pdf -> chunks -> vectors -> index; question -> retrieval; index -> retrieval [style=dashed];
-      retrieval -> check; check -> engine [label="✓"]; check -> no [label="✗"];
-      engine -> verify -> answer;
-    }}
-    """
+    def node(name: str, key: str, module: str = "", fill: str = "") -> str:
+        text = t(lang, key).replace('"', "'")
+        if module:
+            text += "\\n" + module
+        style = f', fillcolor="{fill}"' if fill else ""
+        return f'{name} [label="{text}"{style}];'
+
+    def cluster(name: str, title_key: str, body: list[str]) -> list[str]:
+        head = [
+            f"subgraph cluster_{name} {{",
+            f'label="{t(lang, title_key)}"; fontcolor="#9ca3af"; color="#4b5563";',
+            'fontname="Helvetica";',
+        ]
+        return head + body + ["}"]
+
+    ingest = [
+        node("upload", "flow_upload", "app"),
+        node("pages", "flow_pages", "pdf_loader.py"),
+        node("chunks", "flow_chunks", "chunking.py"),
+        node("vectors", "flow_vectors", "embeddings.py"),
+        node("index", "flow_index", "index.py", "#1e3a8a"),
+        "upload -> pages -> chunks -> vectors -> index;",
+    ]
+    query = [
+        node("question", "flow_question", "app"),
+        node("embed_q", "flow_embed_q", "embeddings.py"),
+        node("search", "flow_search", "retrieval.py"),
+        node("filter", "flow_filter", "generation.py"),
+        node("prompt", "flow_prompt", "prompts.py"),
+        node("engine", "flow_engine", "llm.py"),
+        node("verify", "flow_verify", "generation.py"),
+        node("answer", "flow_answer", "app", "#166534"),
+        node("no", "flow_no", "", "#92400e"),
+        "question -> embed_q -> search -> filter;",
+        'filter -> prompt [label="✓"]; filter -> no [label="✗"];',
+        "prompt -> engine -> verify -> answer;",
+    ]
+    lines = [
+        "digraph {",
+        'rankdir=LR; bgcolor="transparent"; nodesep=0.35; ranksep=0.45;',
+        'node [shape=box, style="rounded,filled", fillcolor="#374151", fontcolor="white",',
+        '      color="#6b7280", fontname="Helvetica", fontsize=11];',
+        'edge [color="#9ca3af", fontcolor="#9ca3af", fontname="Helvetica"];',
+        *cluster("ingest", "cluster_ingest", ingest),
+        *cluster("query", "cluster_query", query),
+        'index -> search [style=dashed, label="search"];',
+        "}",
+    ]
+    return "\n".join(lines)
 
 
 def render_about() -> None:
     st.markdown(t(lang, "about_md"))
-    st.graphviz_chart(flow_diagram())
+
+
+def render_architecture() -> None:
+    st.subheader(t(lang, "arch_title"))
+    st.caption(t(lang, "arch_intro"))
+    st.graphviz_chart(architecture_diagram(), use_container_width=True)
+    st.markdown(t(lang, "arch_md"))
 
 
 def render_evaluation() -> None:
@@ -341,12 +377,14 @@ def render_evaluation() -> None:
 st.title(f"🏭 {t(lang, 'title')}")
 st.caption(t(lang, "subtitle"))
 
-tab_assistant, tab_about, tab_eval = st.tabs(
-    [t(lang, "tab_assistant"), t(lang, "tab_about"), t(lang, "tab_eval")]
+tab_assistant, tab_about, tab_arch, tab_eval = st.tabs(
+    [t(lang, "tab_assistant"), t(lang, "tab_about"), t(lang, "tab_arch"), t(lang, "tab_eval")]
 )
 with tab_assistant:
     render_assistant()
 with tab_about:
     render_about()
+with tab_arch:
+    render_architecture()
 with tab_eval:
     render_evaluation()

@@ -44,7 +44,7 @@ In the sidebar click **Load synthetic sample manuals** (or upload your own PDFs)
 - `What is the maximum pressure of the pump?` (two documents disagree: both values are reported)
 - `What is the warranty period of the P-200?` (not in the documents: the assistant declines)
 
-The first run downloads the embedding model (~220 MB) from Hugging Face. Behind a corporate proxy that re-signs TLS traffic and shows `CERTIFICATE_VERIFY_FAILED`, run `pip install -e ".[corp]"`: the app then uses the operating-system certificate store.
+The first run downloads the embedding model (~120 MB, 8-bit quantised) from Hugging Face. Behind a corporate proxy that re-signs TLS traffic and shows `CERTIFICATE_VERIFY_FAILED`, run `pip install -e ".[corp]"`: the app then uses the operating-system certificate store.
 
 ### Using Claude instead of the offline engine
 
@@ -110,7 +110,7 @@ flowchart LR
 - **Citations are verified, not trusted.** The model sees sources labelled `S1…Sn` and cites those ids. The code maps each id back to the real document/page and reports ids that do not exist; an answer with no valid citation is flagged as unverifiable.
 - **Chunks never cross pages**, so a citation is always exact.
 - **Exact search (`IndexFlatIP`).** For a few thousand chunks, approximate indexes add complexity and no benefit.
-- **ONNX embeddings (fastembed) instead of PyTorch.** Much lighter to install and deploy; the multilingual model handles Italian and English.
+- **ONNX embeddings (fastembed) instead of PyTorch, 8-bit quantised.** Much lighter to install and deploy; the multilingual model handles Italian and English. The first public deployment exceeded Streamlit Cloud's memory limit with the full-precision model (about 560 MB just for the model; ~790 MB for the process). The quantised export of the same model costs about 400 MB, and the whole app measured 636 MB (on Windows, after loading the sample manuals and asking a question). Its embeddings are close to the original (mean cosine 0.994 on a small sample) but retrieval got slightly worse on this benchmark (hit@1 0.80 → 0.77, hit@3 1.00 → 0.94). `FastEmbedEmbedder(quantized=False)` gives the original model.
 - **Provider interface** (`complete(system, user) -> str`): swapping vendor means writing one small class.
 - **Offline extractive engine.** Deterministic, always grounded (it only copies sentences from the sources), keyless: it makes the demo, the tests and the evaluation reproducible, and gives a baseline to compare a real LLM against.
 - **Prompt-injection handling is layered**: (1) passages matching injection patterns are removed before prompting and shown as a warning; (2) the system prompt declares source text untrusted; (3) sources are escaped so a document cannot close the `<source>` tag; (4) citations are verified afterwards. This reduces the risk; it does not eliminate it.
@@ -123,8 +123,8 @@ Four metrics are reported separately. Default configuration: chunk 400 / overlap
 
 | Metric | Result |
 |---|---|
-| Retrieval hit@1 / hit@3 / hit@5 (a gold page is among the results) | 0.80 / 1.00 / 1.00 |
-| Retrieval MRR | 0.89 |
+| Retrieval hit@1 / hit@3 / hit@5 (a gold page is among the results) | 0.77 / 0.94 / 1.00 |
+| Retrieval MRR | 0.87 |
 | Answer correct (expected keywords present, no forbidden content), answerable questions | 0.83 (29/35) |
 | Citation hit (a cited page is a gold page), answered questions | 1.00 |
 | Citation precision (cited pages that are gold) | 1.00 |
@@ -135,20 +135,20 @@ Four metrics are reported separately. Default configuration: chunk 400 / overlap
 
 | min overlap | answer correct | correct abstention | false abstention |
 |---|---|---|---|
-| 0.25 | 0.91 | 0.38 | 0.06 |
-| 0.30 | 0.86 | 0.50 | 0.11 |
+| 0.25 | 0.91 | 0.25 | 0.06 |
+| 0.30 | 0.86 | 0.38 | 0.11 |
 | 0.40 (default) | 0.83 | 0.75 | 0.17 |
-| 0.45 | 0.77 | 0.88 | 0.23 |
+| 0.45 | 0.77 | 0.75 | 0.23 |
 | 0.50 | 0.69 | 1.00 | 0.31 |
 
 For maintenance documentation a wrong answer is worse than a refusal, which is why the default leans towards refusing.
 
 **What the evaluation showed**
 
-- Vector similarity alone does **not** separate "no answer" from "answer": unanswerable questions on a covered topic (e.g. "weight of the C-50" scored 0.52, "viscosity of the P-200" 0.77) score as high as many answerable ones (lowest answerable top-1 score: 0.28). The similarity threshold only catches off-topic questions (0.09). Refusing on-topic questions requires the answering engine to notice that the specific fact is missing.
+- Vector similarity alone does **not** separate "no answer" from "answer": unanswerable questions on a covered topic (e.g. "weight of the C-50" scored 0.50, "viscosity of the P-200" 0.75) score as high as many answerable ones (lowest answerable top-1 score: 0.29). The similarity threshold only catches off-topic questions (0.10). Refusing on-topic questions requires the answering engine to notice that the specific fact is missing.
 - Observed errors in the default run (listed by `python -m rag_assistant.evaluation`):
   - 6 false abstentions (q06, q08, q09, q23, q27, q28). They are lexical mismatches between the question and the manual: "lubricated" vs "Lubricate", "inspected" vs "Inspect", "replaced" vs "Replace" (no stemming), "How often…" vs a sentence saying "every 2000 hours", "compare" in the question but not in the alarm text. q28 also has a weak retrieval score (0.28). A real LLM should handle these paraphrases; the extractive engine cannot.
-  - 2 unanswerable questions were answered (q37 "weight of the C-50", q43 "price of the P-200"): the engine quoted a sentence that shares the topic or product name but not the asked fact.
+  - 2 unanswerable questions were answered (q41 "supply voltage of the compressor motor", q43 "price of the P-200"): the engine quoted a sentence that shares the topic or product name but not the asked fact.
 - The conflict and injection questions behave as intended: both conflicting values are reported with their citations, and the injected "100 bar" never reaches the answer.
 - A bug found by the evaluation and fixed: the first version dropped a whole passage when it contained one injected sentence, which also discarded legitimate facts next to it (fire assembly point, emergency number). Only the suspicious sentences are removed now (answer correct 0.74 → 0.83).
 

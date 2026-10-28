@@ -4,10 +4,10 @@
       "n_questions": 43,
       "n_answerable": 35,
       "n_unanswerable": 8,
-      "retrieval_hit_at_1": 0.8,
-      "retrieval_hit_at_3": 1.0,
+      "retrieval_hit_at_1": 0.771,
+      "retrieval_hit_at_3": 0.943,
       "retrieval_hit_at_k": 1.0,
-      "retrieval_mrr": 0.89,
+      "retrieval_mrr": 0.871,
       "answer_correct": 0.829,
       "citation_hit": 1.0,
       "citation_precision": 1.0,
@@ -86,10 +86,10 @@
       ],
       "retrieved": [
         "pump_P200_manual.pdf#p1",
-        "pump_P200_datasheet_revA.pdf#p1",
         "compressore_C50_manuale.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1",
         "pump_P200_manual.pdf#p4",
-        "plant_safety_procedures.pdf#p2"
+        "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
       "correct": true,
@@ -137,8 +137,8 @@
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
         "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p4",
-        "pump_P200_manual.pdf#p3"
+        "pump_P200_manual.pdf#p3",
+        "pump_P200_manual.pdf#p4"
       ],
       "hit_rank": 1,
       "correct": true,
@@ -184,11 +184,11 @@
       "retrieved": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_manual.pdf#p4",
-        "pump_P200_manual.pdf#p2",
         "pump_P200_datasheet_revA.pdf#p1",
-        "pump_P200_manual.pdf#p3"
+        "pump_P200_manual.pdf#p2",
+        "compressore_C50_manuale.pdf#p3"
       ],
-      "hit_rank": 3,
+      "hit_rank": 4,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -205,10 +205,10 @@
       "cited": [],
       "retrieved": [
         "pump_P200_manual.pdf#p2",
-        "plant_safety_procedures.pdf#p2",
         "compressore_C50_manuale.pdf#p2",
+        "plant_safety_procedures.pdf#p2",
         "pump_P200_manual.pdf#p1",
-        "pump_P200_manual.pdf#p3"
+        "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
       "correct": false,
@@ -228,13 +228,13 @@
       "answer": "The uploaded documents do not contain enough information to answer this question.",
       "cited": [],
       "retrieved": [
-        "pump_P200_manual.pdf#p2",
         "compressore_C50_manuale.pdf#p2",
-        "plant_safety_procedures.pdf#p2",
+        "pump_P200_manual.pdf#p2",
+        "compressore_C50_manuale.pdf#p3",
         "pump_P200_manual.pdf#p1",
-        "compressore_C50_manuale.pdf#p3"
+        "plant_safety_procedures.pdf#p2"
       ],
-      "hit_rank": 1,
+      "hit_rank": 2,
       "correct": false,
       "citation_hit": null,
       "citation_precision": null,
@@ -279,8 +279,8 @@
       ],
       "retrieved": [
         "pump_P200_manual.pdf#p3",
-        "pump_P200_manual.pdf#p4",
         "compressore_C50_manuale.pdf#p1",
+        "pump_P200_manual.pdf#p4",
         "pump_P200_datasheet_revA.pdf#p1",
         "pump_P200_manual.pdf#p1"
       ],
@@ -306,7 +306,7 @@
         "pump_P200_manual.pdf#p4",
         "pump_P200_manual.pdf#p1",
         "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p2"
+        "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
       "correct": true,
@@ -327,9 +327,9 @@
       ],
       "retrieved": [
         "pump_P200_manual.pdf#p3",
-        "pump_P200_manual.pdf#p4",
         "compressore_C50_manuale.pdf#p1",
         "pump_P200_manual.pdf#p1",
+        "pump_P200_manual.pdf#p4",
         "plant_safety_procedures.pdf#p2"
       ],
       "hit_rank": 1,
@@ -352,8 +352,8 @@
       "retrieved": [
         "pump_P200_manual.pdf#p3",
         "pump_P200_manual.pdf#p4",
-        "pump_P200_datasheet_revA.pdf#p1",
         "compressore_C50_manuale.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1",
         "plant_safety_procedures.pdf#p2"
       ],
       "hit_rank": 1,
@@ -425,8 +425,8 @@
         "compressore_C50_manuale.pdf#p3",
         "pump_P200_manual.pdf#p4",
         "pump_P200_datasheet_revA.pdf#p1",
-        "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p1"
+        "pump_P200_manual.pdf#p1",
+        "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 2,
       "correct": true,
@@ -450,7 +450,7 @@
         "pump_P200_manual.pdf#p1",
         "compressore_C50_manuale.pdf#p1",
         "plant_safety_procedures.pdf#p2",
-        "pump_P200_manual.pdf#p3"
+        "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
       "correct": true,
@@ -592,9 +592,9 @@
       "retrieved": [
         "compressore_C50_manuale.pdf#p2",
         "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p1",
         "pump_P200_manual.pdf#p2",
-        "pump_P200_datasheet_revA.pdf#p1"
+        "pump_P200_manual.pdf#p1",
+        "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
       "correct": true,
@@ -641,8 +641,8 @@
         "plant_safety_procedures.pdf#p3",
         "compressore_C50_manuale.pdf#p3",
         "plant_safety_procedures.pdf#p2",
-        "plant_safety_procedures.pdf#p1",
-        "compressore_C50_manuale.pdf#p1"
+        "compressore_C50_manuale.pdf#p1",
+        "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 2,
       "correct": true,
@@ -686,11 +686,11 @@
       "retrieved": [
         "pump_P200_manual.pdf#p3",
         "plant_safety_procedures.pdf#p1",
-        "compressore_C50_manuale.pdf#p3",
         "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p2"
+        "compressore_C50_manuale.pdf#p3",
+        "pump_P200_manual.pdf#p4"
       ],
-      "hit_rank": 3,
+      "hit_rank": 4,
       "correct": false,
       "citation_hit": null,
       "citation_precision": null,
@@ -712,9 +712,9 @@
       "retrieved": [
         "plant_safety_procedures.pdf#p3",
         "plant_safety_procedures.pdf#p1",
-        "pump_P200_manual.pdf#p4",
+        "compressore_C50_manuale.pdf#p1",
         "compressore_C50_manuale.pdf#p3",
-        "compressore_C50_manuale.pdf#p1"
+        "pump_P200_manual.pdf#p4"
       ],
       "hit_rank": 1,
       "correct": true,
@@ -759,10 +759,10 @@
       ],
       "retrieved": [
         "plant_safety_procedures.pdf#p3",
+        "compressore_C50_manuale.pdf#p1",
         "pump_P200_manual.pdf#p2",
         "compressore_C50_manuale.pdf#p2",
-        "plant_safety_procedures.pdf#p2",
-        "compressore_C50_manuale.pdf#p1"
+        "pump_P200_datasheet_revA.pdf#p1"
       ],
       "hit_rank": 1,
       "correct": true,
@@ -880,8 +880,8 @@
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
         "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p4",
-        "compressore_C50_manuale.pdf#p3"
+        "compressore_C50_manuale.pdf#p3",
+        "pump_P200_manual.pdf#p4"
       ],
       "hit_rank": null,
       "correct": null,
@@ -895,26 +895,22 @@
       "category": "unanswerable",
       "question": "Qual e il peso del compressore C-50?",
       "answerable": false,
-      "status": "answered",
-      "answer": "Compressore a vite C-50 - Manuale di manutenzione. [compressore_C50_manuale.pdf, p. 1]",
-      "cited": [
-        "compressore_C50_manuale.pdf#p1"
-      ],
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
       "retrieved": [
         "compressore_C50_manuale.pdf#p1",
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
         "pump_P200_manual.pdf#p4",
-        "pump_P200_manual.pdf#p3"
+        "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
-      "abstained": false,
-      "problems": [
-        "answered a question that has no answer in the documents"
-      ]
+      "abstained": true,
+      "problems": []
     },
     {
       "id": "q38",
@@ -927,9 +923,9 @@
       "retrieved": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
-        "plant_safety_procedures.pdf#p2",
-        "pump_P200_manual.pdf#p2",
-        "compressore_C50_manuale.pdf#p1"
+        "compressore_C50_manuale.pdf#p1",
+        "compressore_C50_manuale.pdf#p2",
+        "pump_P200_manual.pdf#p2"
       ],
       "hit_rank": null,
       "correct": null,
@@ -971,8 +967,8 @@
       "retrieved": [
         "pump_P200_manual.pdf#p3",
         "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p4",
         "pump_P200_manual.pdf#p1",
+        "pump_P200_manual.pdf#p4",
         "pump_P200_datasheet_revA.pdf#p1"
       ],
       "hit_rank": null,
@@ -987,22 +983,26 @@
       "category": "unanswerable",
       "question": "Qual e la tensione di alimentazione del motore del compressore?",
       "answerable": false,
-      "status": "insufficient",
-      "answer": "The uploaded documents do not contain enough information to answer this question.",
-      "cited": [],
+      "status": "answered",
+      "answer": "Allarme E03: sovracorrente del motore; verificare le tre fasi di alimentazione. [compressore_C50_manuale.pdf, p. 3]",
+      "cited": [
+        "compressore_C50_manuale.pdf#p3"
+      ],
       "retrieved": [
         "compressore_C50_manuale.pdf#p1",
         "pump_P200_manual.pdf#p4",
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
-        "pump_P200_manual.pdf#p3"
+        "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
-      "abstained": true,
-      "problems": []
+      "abstained": false,
+      "problems": [
+        "answered a question that has no answer in the documents"
+      ]
     },
     {
       "id": "q42",
@@ -1041,8 +1041,8 @@
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
         "compressore_C50_manuale.pdf#p1",
-        "pump_P200_manual.pdf#p4",
-        "plant_safety_procedures.pdf#p2"
+        "plant_safety_procedures.pdf#p2",
+        "pump_P200_manual.pdf#p4"
       ],
       "hit_rank": null,
       "correct": null,

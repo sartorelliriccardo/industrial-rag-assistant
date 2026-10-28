@@ -63,17 +63,50 @@ Industrial RAG Assistant answers questions about technical manuals (PDF) and alw
 ### Privacy and code
 PDFs are processed in memory and never stored. Do not upload confidential documents to a public demo. Source code: github.com/sartorelliriccardo/industrial-rag-assistant
 """,
-        "flow_pdf": "PDF",
-        "flow_chunks": "Chunks per page",
-        "flow_vectors": "Vectors",
-        "flow_index": "FAISS index",
+        "tab_arch": "Architecture",
+        "arch_title": "Architecture: how it works",
+        "arch_intro": "Two flows share the same index: ingestion runs once per PDF, the question flow runs every time you ask. Under each step you can see the code module that implements it.",
+        "cluster_ingest": "Ingestion (once per PDF)",
+        "cluster_query": "Every question",
+        "flow_upload": "PDF upload",
+        "flow_pages": "Pages with page number",
+        "flow_chunks": "Overlapping chunks",
+        "flow_vectors": "Embeddings (vectors)",
+        "flow_index": "Vector index (cosine)",
         "flow_question": "Question",
-        "flow_retrieval": "Most similar passages",
-        "flow_check": "Evidence enough?",
-        "flow_engine": "Answer engine",
+        "flow_embed_q": "Embed the question",
+        "flow_search": "Most similar passages (top-k)",
+        "flow_filter": "Score threshold + injection filter",
+        "flow_prompt": "Prompt: rules + untrusted sources",
+        "flow_engine": "Answer engine (offline or Claude)",
         "flow_verify": "Citation check",
-        "flow_answer": "Answer + sources",
+        "flow_answer": "Answer, sources, page preview",
         "flow_no": "Not enough information",
+        "arch_md": """
+### Components
+
+| Step | Module | Technology | What it does |
+|---|---|---|---|
+| Reading | `pdf_loader.py` | PyMuPDF | Extracts the text of each page keeping document name and page number; clear errors for empty, corrupted, protected or scanned PDFs |
+| Chunking | `chunking.py` | Python | Sliding window of 400 characters with 80 of overlap, cut on whitespace, never across a page |
+| Embeddings | `embeddings.py` | FastEmbed (ONNX), multilingual MiniLM quantised to 8 bit, 384 dimensions | Turns text into a vector of unit length that represents its meaning, in Italian and English |
+| Index | `index.py` | FAISS (exact inner-product index) | Stores the vectors; with unit vectors the inner product is the cosine similarity |
+| Retrieval | `retrieval.py` | - | Finds the top-k most similar passages with their score |
+| Generation | `generation.py`, `prompts.py` | - | Applies the score threshold, removes injected instructions, builds the constrained prompt and verifies the citations |
+| Answer engine | `llm.py` | Offline extractive engine or Anthropic API | Writes the answer from the evidence only; swappable through a one-method interface |
+| Evaluation | `evaluation.py` | - | Four separate metrics on 43 questions: retrieval, correctness, citations, refusals |
+| Interface | `app/streamlit_app.py` | Streamlit | Upload, answer, sources, page preview, evaluation view |
+
+### Design decisions
+- **No RAG framework.** Every step is short, readable and tested, so each choice can be explained and measured.
+- **Citations are verified, not trusted.** The engine cites ids like S1; the code maps each id back to the real document and page and reports any id that does not exist.
+- **Chunks never cross pages**, so a citation always points to the exact page.
+- **Exact search.** For thousands of passages an approximate index adds complexity and no benefit.
+- **ONNX embeddings instead of PyTorch**: much lighter to install and to deploy.
+- **Swappable engine.** The offline engine makes demo, tests and evaluation reproducible without keys; Claude plugs in through the same interface.
+- **Layered defence against prompt injection:** suspicious sentences are removed, the prompt declares sources untrusted, source text is escaped, and citations are verified afterwards. It reduces the risk, it does not remove it.
+- **Refuse rather than guess:** a low similarity score means the engine is never called.
+""",
         "eval_title": "How well does it work?",
         "eval_intro": "Results of the repeatable evaluation (eval/questions.jsonl): {n} questions, {n_ans} with an answer in the documents and {n_unans} without. Offline engine, chunk {size}/{overlap}, top-{k}, minimum similarity {min_score}.",
         "eval_missing": "No evaluation results found. Run: python -m rag_assistant.evaluation --out eval/results.json",
@@ -150,17 +183,50 @@ Industrial RAG Assistant risponde a domande sui manuali tecnici (PDF) e mostra s
 ### Privacy e codice
 I PDF sono elaborati in memoria e mai salvati. Non caricare documenti riservati in una demo pubblica. Codice sorgente: github.com/sartorelliriccardo/industrial-rag-assistant
 """,
-        "flow_pdf": "PDF",
-        "flow_chunks": "Chunk per pagina",
-        "flow_vectors": "Vettori",
-        "flow_index": "Indice FAISS",
+        "tab_arch": "Architettura",
+        "arch_title": "Architettura: come funziona",
+        "arch_intro": "Due flussi condividono lo stesso indice: il caricamento avviene una volta per PDF, il flusso della domanda a ogni richiesta. Sotto ogni passaggio vedi il modulo di codice che lo realizza.",
+        "cluster_ingest": "Caricamento (una volta per PDF)",
+        "cluster_query": "A ogni domanda",
+        "flow_upload": "Caricamento PDF",
+        "flow_pages": "Pagine con numero di pagina",
+        "flow_chunks": "Chunk sovrapposti",
+        "flow_vectors": "Embedding (vettori)",
+        "flow_index": "Indice vettoriale (coseno)",
         "flow_question": "Domanda",
-        "flow_retrieval": "Passaggi più simili",
-        "flow_check": "Evidenze sufficienti?",
-        "flow_engine": "Motore di risposta",
-        "flow_verify": "Verifica citazioni",
-        "flow_answer": "Risposta + fonti",
+        "flow_embed_q": "Vettorizza la domanda",
+        "flow_search": "Passaggi più simili (top-k)",
+        "flow_filter": "Soglia di punteggio + filtro injection",
+        "flow_prompt": "Prompt: regole + fonti non attendibili",
+        "flow_engine": "Motore di risposta (offline o Claude)",
+        "flow_verify": "Verifica delle citazioni",
+        "flow_answer": "Risposta, fonti, anteprima pagina",
         "flow_no": "Informazioni insufficienti",
+        "arch_md": """
+### Componenti
+
+| Passaggio | Modulo | Tecnologia | Cosa fa |
+|---|---|---|---|
+| Lettura | `pdf_loader.py` | PyMuPDF | Estrae il testo di ogni pagina tenendo nome del documento e numero di pagina; errori chiari per PDF vuoti, danneggiati, protetti o scansionati |
+| Chunking | `chunking.py` | Python | Finestra scorrevole di 400 caratteri con 80 di sovrapposizione, tagliata sugli spazi, mai a cavallo di una pagina |
+| Embedding | `embeddings.py` | FastEmbed (ONNX), MiniLM multilingue quantizzato a 8 bit, 384 dimensioni | Trasforma il testo in un vettore di lunghezza unitaria che ne rappresenta il significato, in italiano e inglese |
+| Indice | `index.py` | FAISS (indice esatto a prodotto scalare) | Conserva i vettori; con vettori unitari il prodotto scalare è la similarità coseno |
+| Ricerca | `retrieval.py` | - | Trova i top-k passaggi più simili con il loro punteggio |
+| Generazione | `generation.py`, `prompts.py` | - | Applica la soglia di punteggio, toglie le istruzioni iniettate, costruisce il prompt vincolato e verifica le citazioni |
+| Motore di risposta | `llm.py` | Motore offline estrattivo o API Anthropic | Scrive la risposta solo dalle evidenze; sostituibile tramite un'interfaccia a un solo metodo |
+| Valutazione | `evaluation.py` | - | Quattro metriche separate su 43 domande: ricerca, correttezza, citazioni, rifiuti |
+| Interfaccia | `app/streamlit_app.py` | Streamlit | Caricamento, risposta, fonti, anteprima della pagina, vista della valutazione |
+
+### Scelte di progetto
+- **Nessun framework RAG.** Ogni passaggio è breve, leggibile e testato, così ogni scelta si può spiegare e misurare.
+- **Le citazioni si verificano, non ci si fida.** Il motore cita id come S1; il codice riporta ogni id al documento e alla pagina reali e segnala quelli che non esistono.
+- **I chunk non attraversano mai le pagine**, quindi una citazione punta sempre alla pagina esatta.
+- **Ricerca esatta.** Per migliaia di passaggi un indice approssimato aggiunge complessità senza benefici.
+- **Embedding ONNX invece di PyTorch**: molto più leggeri da installare e da pubblicare.
+- **Motore sostituibile.** Il motore offline rende demo, test e valutazione riproducibili senza chiavi; Claude si collega con la stessa interfaccia.
+- **Difesa a più livelli dalla prompt injection:** le frasi sospette vengono tolte, il prompt dichiara le fonti non attendibili, il testo delle fonti è protetto da escape e le citazioni sono verificate dopo. Riduce il rischio, non lo elimina.
+- **Rifiutare invece di indovinare:** un punteggio di similarità basso significa che il motore non viene nemmeno chiamato.
+""",
         "eval_title": "Quanto funziona bene?",
         "eval_intro": "Risultati della valutazione ripetibile (eval/questions.jsonl): {n} domande, {n_ans} con risposta nei documenti e {n_unans} senza. Motore offline, chunk {size}/{overlap}, top-{k}, similarità minima {min_score}.",
         "eval_missing": "Nessun risultato di valutazione trovato. Esegui: python -m rag_assistant.evaluation --out eval/results.json",
