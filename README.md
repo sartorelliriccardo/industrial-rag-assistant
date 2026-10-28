@@ -21,7 +21,7 @@ A general-purpose LLM asked "what is the tightening torque of the impeller nut?"
 - Answers containing technical values (torque, pressure, temperature...) carry a reminder to verify them on the cited page.
 - Four tabs: **Assistant**, **How it works** (plain-language explanation), **Architecture** (two-flow diagram, modules, technologies, design decisions) and **Evaluation** (live view of `eval/results_*.json`, including the observed errors).
 - Two interchangeable answer engines: an **offline extractive engine** (no API key) and **Claude** via the Anthropic API.
-- 200 automated tests that run with no network and no API key, plus a repeatable evaluation.
+- 210 automated tests that run with no network and no API key, plus a repeatable evaluation.
 
 ## Quick start
 
@@ -59,7 +59,7 @@ The Claude engine is implemented and unit-tested against a fake provider, but **
 ### Tests, lint, evaluation
 
 ```bash
-pytest                         # 200 tests, offline, no API key
+pytest                         # 210 tests, offline, no API key
 ruff check . && ruff format --check .
 python -m rag_assistant.evaluation --search keyword  --out eval/results_keyword.json
 python -m rag_assistant.evaluation --search semantic --out eval/results_semantic.json   # needs the model
@@ -103,6 +103,8 @@ flowchart LR
 | `pipeline.py` | Facade used by the UI and the evaluation |
 | `i18n.py`, `i18n_content.py` | Italian / English interface strings (a test checks both languages have the same keys) |
 | `preview.py` | Renders a cited PDF page with the used sentences highlighted |
+| `workspace.py` | Per-session store of the uploaded PDFs and the search index; discards a session's data shortly after it disconnects |
+| `session.py` | Idle expiry and optional-password helpers (UI-independent, unit-tested) |
 | `evaluation.py` | Repeatable evaluation with four separate metrics |
 
 ## Design decisions
@@ -175,12 +177,20 @@ For maintenance documentation a wrong answer is worse than a refusal, which is w
 What the app does with an uploaded PDF:
 
 - It is held **in the server's memory** for the session. The code never writes uploaded files, extracted text or questions to disk or to a database, and it does not log them.
-- It is discarded when the user presses **Delete all documents now**, and automatically after **15 minutes without interaction** while the page is open (`DOC_IDLE_MINUTES`, `0` disables it). When the page is closed, Streamlit discards the session; this project cannot make that instantaneous, and there is no documented time after which the memory is released (a forum report mentions memory from closed sessions not being freed immediately), so the documents are not guaranteed to disappear at the very moment of closing.
+- It is discarded in three ways: **(1)** when the user presses **Delete all documents now**; **(2)** after **15 minutes without interaction** while the page is open (`DOC_IDLE_MINUTES`, `0` disables it); **(3)** about **15 to 20 seconds after the page is closed** or the session otherwise disconnects.
+- Streamlit's own server-side copy of an uploaded file is deleted as soon as the app has read it.
+
+Why (3) needs its own mechanism, measured on Streamlit 1.66 with an 8 MB upload: closing a tab does **not** free its data. Streamlit keeps the disconnected session (state and uploaded files) for `server.disconnectedSessionTTL` seconds (120 by default) and, even after that, drops it only lazily, when *another* session disconnects. With a 5-second TTL the closed session was still in memory more than 10 seconds later, and was freed only when the next session closed. On a quiet demo, the manual of the last visitor could therefore stay in memory for a long time. Also, resetting the upload widget does not free the uploaded file either.
+
+So the documents live in a store of this project (`workspace.py`) instead of Streamlit's session state. A background thread checks every 2 seconds whether each session is still connected (`Runtime.is_active_session`) and, 15 seconds after it stops being, empties its workspace in place (files, extracted text, search index). In a local run with the real app, the process's private memory went back from 2055 MB to its initial 2046 MB about 19 seconds after the tab was closed.
 - Upload is blocked until the user ticks a confirmation that the documents are not confidential and may be used for the test.
 - With the **Claude** engine, the retrieved passages (not the whole file) are sent to Anthropic's API to write the answer. The app says so when that engine is selected. The offline engine sends nothing anywhere.
 
 What this does **not** guarantee:
 
+- **It was measured locally on Windows, not on Streamlit Community Cloud.** The mechanism relies on the same Streamlit calls there, but its behaviour on that platform is unverified.
+- Refreshing the page or a network drop longer than 15 seconds ends the session's documents: they must be uploaded again.
+- Python may keep freed memory for reuse instead of returning it to the operating system; the figure above is from Windows. The data is unreachable by the app after cleanup, but this is not a secure-erase guarantee (no memory wiping).
 - On a public demo the app runs on a **third-party hosting platform** that this project does not control; its own logging and retention are outside the app's reach and were not verified here.
 - A disclaimer informs users, it does not make an upload safe, and it is not legal advice. For confidential manuals, run the app on your own machine or server (keyword search and the offline engine need no internet) instead of using a public demo.
 - **A public Community Cloud app cannot be hidden from search engines.** Streamlit's [documentation](https://docs.streamlit.io/deploy/streamlit-community-cloud/share-your-app/indexability) says public apps are indexed automatically (private apps are not), and there is no setting to opt out. Not publishing the URL reduces discovery, but it is not access control. Two ways to restrict access: make the app **private** in the Streamlit sharing settings (viewers sign in with an invited email), or set an **`APP_PASSWORD`** (environment variable or Streamlit secret): the app then shows only a password box until it is typed. The password is a single shared secret without rate limiting, so it keeps casual visitors out; it is not strong authentication and does not change where the data is processed.

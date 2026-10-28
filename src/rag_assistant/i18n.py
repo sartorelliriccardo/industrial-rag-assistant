@@ -30,10 +30,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "upload": "Upload PDF manuals",
         "privacy": (
             "Your files are processed in the server's memory for this session only. "
-            "This app does not write them to disk or to any database, and they are discarded "
-            "when you close the page or press the delete button. The app runs on a third-party "
-            "hosting platform that we do not control. This is a public demo: do not upload "
-            "confidential documents."
+            "This app does not write them to disk or to any database, and they are deleted "
+            "a few seconds after you close the page, or when you press the delete button. "
+            "The app runs on a third-party hosting platform that we do not control. "
+            "This is a public demo: do not upload confidential documents."
         ),
         "confirm_rights": "I confirm that these documents are not confidential and that I may use them for this test.",
         "clear_all": "Delete all documents now",
@@ -97,10 +97,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "upload": "Carica i manuali in PDF",
         "privacy": (
             "I tuoi file sono elaborati nella memoria del server solo per questa sessione. "
-            "L'app non li scrive su disco né in alcun database, e vengono eliminati quando "
-            "chiudi la pagina o premi il pulsante di cancellazione. L'app gira su una "
-            "piattaforma di hosting di terzi che non controlliamo. Questa è una demo pubblica: "
-            "non caricare documenti riservati."
+            "L'app non li scrive su disco né in alcun database, e vengono eliminati pochi "
+            "secondi dopo la chiusura della pagina, o quando premi il pulsante di cancellazione. "
+            "L'app gira su una piattaforma di hosting di terzi che non controlliamo. "
+            "Questa è una demo pubblica: non caricare documenti riservati."
         ),
         "confirm_rights": "Confermo che i documenti non sono riservati e che posso usarli per questa prova.",
         "clear_all": "Cancella ora tutti i documenti",

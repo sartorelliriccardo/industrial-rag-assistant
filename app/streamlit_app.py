@@ -5,6 +5,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parent.parent
 try:
@@ -13,6 +14,8 @@ except ImportError:  # running without `pip install -e .` (e.g. Streamlit Cloud)
     sys.path.insert(0, str(ROOT / "src"))
 
 import streamlit as st
+from streamlit import runtime as st_runtime
+from streamlit.runtime.scriptrunner import get_script_run_ctx
 
 from rag_assistant.config import (
     DEFAULT_TOP_K,
@@ -37,6 +40,7 @@ from rag_assistant.pdf_loader import (
 from rag_assistant.pipeline import RagPipeline
 from rag_assistant.preview import render_cited_page, select_sentences
 from rag_assistant.session import check_interval_seconds, idle_expired, passwords_match
+from rag_assistant.workspace import Workspace, get_store
 
 EVAL_DIR = ROOT / "eval"
 # uploaded documents are dropped after this many idle minutes (0 disables it)
@@ -112,13 +116,50 @@ def pdf_error_message(lang: str, exc: PdfError, name: str) -> str:
     return t(lang, key, name=name)
 
 
+def session_is_active(session_id: str) -> bool:
+    return st_runtime.get_instance().is_active_session(session_id)
+
+
+def current_session_id() -> str:
+    ctx = get_script_run_ctx()
+    if ctx is not None:
+        return ctx.session_id
+    return st.session_state.setdefault("fallback_session_id", uuid4().hex)
+
+
+# One store for the whole process: documents live here, not in Streamlit's session state,
+# so they are discarded a few seconds after the browser tab goes away (see workspace.py).
+store = get_store(session_is_active)
+
+
+def workspace() -> Workspace:
+    return store.get_or_create(current_session_id())
+
+
+def discard_upload_buffers() -> None:
+    """Delete Streamlit's own server-side copy of the files uploaded in this session.
+
+    Streamlit keeps every uploaded file in memory until the session is cleaned up, even
+    after the widget is reset. We already hold the bytes we need in our workspace.
+    """
+    try:
+        st_runtime.get_instance().uploaded_file_mgr.remove_session_files(current_session_id())
+    except Exception:  # best effort: the session cleanup will still remove them eventually
+        pass
+
+
+def flash(kind: str, text: str) -> None:
+    """Queue a message that survives the st.rerun() that follows an upload."""
+    st.session_state.setdefault("flash", []).append((kind, text))
+
+
 def clear_documents(language: str, message_key: str = "cleared") -> None:
     """Drop every uploaded document from memory and reset the upload widget."""
-    pipe = st.session_state.get("pipeline")
-    for name in list(st.session_state.get("files", {})):
-        if pipe:
-            pipe.remove(name)
-    st.session_state.files = {}
+    ws = workspace()
+    if ws.pipeline is not None:
+        ws.pipeline.clear()
+    ws.files.clear()
+    discard_upload_buffers()
     st.session_state.question = ""
     st.session_state.upload_gen = st.session_state.get("upload_gen", 0) + 1
     st.toast(t(language, message_key, minutes=f"{IDLE_MINUTES:g}"))
@@ -178,6 +219,8 @@ with st.sidebar:
         key=f"uploader_{st.session_state.get('upload_gen', 0)}",
         disabled=not confirmed,
     )
+    for kind, text in st.session_state.pop("flash", []):
+        (st.success if kind == "success" else st.error)(text)
     clear_slot = st.empty()  # filled below, once uploads have been processed
     st.caption(t(lang, "privacy"))
     if IDLE_MINUTES > 0:
@@ -185,21 +228,22 @@ with st.sidebar:
 
 # ---------------------------------------------------------------- state
 config_key = (search, provider_name, api_key)
-if "pipeline" not in st.session_state or st.session_state.get("config_key") != config_key:
-    previous = st.session_state.get("files", {})
+ws = workspace()
+if ws.pipeline is None or ws.config_key != config_key:
+    previous = dict(ws.files)
     try:
-        st.session_state.pipeline = new_pipeline(search, provider_name, api_key or None)
-        st.session_state.config_key = config_key
-        st.session_state.files = {}
+        ws.pipeline = new_pipeline(search, provider_name, api_key or None)
+        ws.config_key = config_key
+        ws.files = {}
         for name, data in previous.items():  # re-index when only the engine changed
-            st.session_state.pipeline.add_pdf_bytes(data, name)
-            st.session_state.files[name] = data
+            ws.pipeline.add_pdf_bytes(data, name)
+            ws.files[name] = data
     except ValueError:  # missing API key
-        st.session_state.pipeline = None
-        st.session_state.config_key = None
+        ws.pipeline = None
+        ws.config_key = None
 
-pipeline: RagPipeline | None = st.session_state.get("pipeline")
-files: dict[str, bytes] = st.session_state.setdefault("files", {})
+pipeline: RagPipeline | None = ws.pipeline
+files: dict[str, bytes] = ws.files
 
 
 def add_file(name: str, data: bytes) -> None:
@@ -207,16 +251,23 @@ def add_file(name: str, data: bytes) -> None:
         with st.spinner(t(lang, "indexing", name=name)):
             n = pipeline.add_pdf_bytes(data, name)
         files[name] = data
-        st.sidebar.success(t(lang, "indexed", name=name, n=n))
+        flash("success", t(lang, "indexed", name=name, n=n))
     except PdfError as exc:
-        st.sidebar.error(pdf_error_message(lang, exc, name))
+        flash("error", pdf_error_message(lang, exc, name))
 
 
 if pipeline:
+    consumed = False
     for upload in uploads or []:
         data = upload.getvalue()
+        consumed = True
         if files.get(upload.name) != data:
             add_file(upload.name, data)
+    if consumed:
+        # we hold our own copy now: drop Streamlit's, reset the widget, show the result
+        discard_upload_buffers()
+        st.session_state.upload_gen = st.session_state.get("upload_gen", 0) + 1
+        st.rerun()
 
 clear_slot.button(t(lang, "clear_all"), on_click=clear_documents, args=(lang,), disabled=not files)
 
@@ -460,7 +511,7 @@ def idle_guard() -> None:
     count as user activity). Once the page is closed nothing runs here: the session is then
     discarded by Streamlit.
     """
-    if st.session_state.get("files") and idle_expired(
+    if workspace().files and idle_expired(
         st.session_state.get("last_active", time.time()), time.time(), IDLE_MINUTES
     ):
         clear_documents(lang, "idle_cleared")

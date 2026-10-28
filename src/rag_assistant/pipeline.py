@@ -59,6 +59,10 @@ class RagPipeline:
         path = Path(path)
         return self.add_pdf_bytes(path.read_bytes(), path.name)
 
+    def clear(self) -> None:
+        """Forget every document (the index and the extracted text go with it)."""
+        self._index = None
+
     def remove(self, doc_name: str) -> None:
         if self._index:
             self._index.remove_document(doc_name)
