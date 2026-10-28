@@ -365,8 +365,12 @@ def render_previews(answer) -> None:
             st.image(png, caption=t(lang, caption_key, doc=c.doc_name, page=c.page_number))
 
 
-def architecture_diagram() -> str:
-    """Two-flow diagram: each node shows the step and the module that implements it."""
+def architecture_diagram(flow: str) -> str:
+    """One flow as a top-to-bottom diagram: each box shows the step and the module behind it.
+
+    Vertical layout keeps the drawing narrow, so it stays at a readable size instead of being
+    shrunk to fit the page width.
+    """
 
     def node(name: str, key: str, module: str = "", fill: str = "") -> str:
         text = t(lang, key).replace('"', "'")
@@ -375,45 +379,39 @@ def architecture_diagram() -> str:
         style = f', fillcolor="{fill}"' if fill else ""
         return f'{name} [label="{text}"{style}];'
 
-    def cluster(name: str, title_key: str, body: list[str]) -> list[str]:
-        head = [
-            f"subgraph cluster_{name} {{",
-            f'label="{t(lang, title_key)}"; fontcolor="#9ca3af"; color="#4b5563";',
-            'fontname="Helvetica";',
+    if flow == "ingest":
+        body = [
+            node("upload", "flow_upload", "app"),
+            node("pages", "flow_pages", "pdf_loader.py"),
+            node("chunks", "flow_chunks", "chunking.py"),
+            node("vectors", "flow_vectors", "embeddings.py"),
+            node("index", "flow_index", "index.py", "#1e3a8a"),
+            "upload -> pages -> chunks -> vectors -> index;",
         ]
-        return head + body + ["}"]
-
-    ingest = [
-        node("upload", "flow_upload", "app"),
-        node("pages", "flow_pages", "pdf_loader.py"),
-        node("chunks", "flow_chunks", "chunking.py"),
-        node("vectors", "flow_vectors", "embeddings.py"),
-        node("index", "flow_index", "index.py", "#1e3a8a"),
-        "upload -> pages -> chunks -> vectors -> index;",
-    ]
-    query = [
-        node("question", "flow_question", "app"),
-        node("embed_q", "flow_embed_q", "embeddings.py"),
-        node("search", "flow_search", "retrieval.py"),
-        node("filter", "flow_filter", "generation.py"),
-        node("prompt", "flow_prompt", "prompts.py"),
-        node("engine", "flow_engine", "llm.py"),
-        node("verify", "flow_verify", "generation.py"),
-        node("answer", "flow_answer", "app", "#166534"),
-        node("no", "flow_no", "", "#92400e"),
-        "question -> embed_q -> search -> filter;",
-        'filter -> prompt [label="✓"]; filter -> no [label="✗"];',
-        "prompt -> engine -> verify -> answer;",
-    ]
+    else:
+        body = [
+            node("question", "flow_question", "app"),
+            node("embed_q", "flow_embed_q", "embeddings.py"),
+            node("index", "flow_index", "index.py", "#1e3a8a"),
+            node("search", "flow_search", "retrieval.py"),
+            node("filter", "flow_filter", "generation.py"),
+            node("prompt", "flow_prompt", "prompts.py"),
+            node("engine", "flow_engine", "llm.py"),
+            node("verify", "flow_verify", "generation.py"),
+            node("answer", "flow_answer", "app", "#166534"),
+            node("no", "flow_no", "", "#92400e"),
+            "{rank=same; embed_q; index}",
+            "question -> embed_q -> search; index -> search;",
+            'search -> filter; filter -> prompt [label=" ✓"]; filter -> no [label=" ✗"];',
+            "prompt -> engine -> verify -> answer;",
+        ]
     lines = [
         "digraph {",
-        'rankdir=LR; bgcolor="transparent"; nodesep=0.35; ranksep=0.45;',
+        'rankdir=TB; bgcolor="transparent"; nodesep=0.4; ranksep=0.45;',
         'node [shape=box, style="rounded,filled", fillcolor="#374151", fontcolor="white",',
-        '      color="#6b7280", fontname="Helvetica", fontsize=11];',
-        'edge [color="#9ca3af", fontcolor="#9ca3af", fontname="Helvetica"];',
-        *cluster("ingest", "cluster_ingest", ingest),
-        *cluster("query", "cluster_query", query),
-        'index -> search [style=dashed, label="search"];',
+        '      color="#6b7280", fontname="Helvetica", fontsize=13, margin="0.2,0.12"];',
+        'edge [color="#6b7280", fontcolor="#6b7280", fontname="Helvetica", fontsize=13];',
+        *body,
         "}",
     ]
     return "\n".join(lines)
@@ -426,7 +424,15 @@ def render_about() -> None:
 def render_architecture() -> None:
     st.subheader(t(lang, "arch_title"))
     st.caption(t(lang, "arch_intro"))
-    st.graphviz_chart(architecture_diagram(), use_container_width=True)
+    # column widths follow the natural widths of the two drawings (about 1 : 2.2), so both
+    # are shown at the same scale and the text has the same size in each
+    left, right = st.columns([1, 2.2])
+    with left:
+        st.markdown(f"**{t(lang, 'cluster_ingest')}**")
+        st.graphviz_chart(architecture_diagram("ingest"), use_container_width=True)
+    with right:
+        st.markdown(f"**{t(lang, 'cluster_query')}**")
+        st.graphviz_chart(architecture_diagram("query"), use_container_width=True)
     st.markdown(t(lang, "arch_md"))
 
 
