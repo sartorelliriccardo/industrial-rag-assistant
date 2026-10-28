@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "industrial-rag-assistant"
+version = "0.1.0"
+description = "RAG assistant to query industrial technical documentation (PDF) with verifiable citations."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = [
+    "pymupdf>=1.24",
+    "faiss-cpu>=1.8",
+    "fastembed>=0.4",
+    "numpy>=1.26",
+    "anthropic>=0.40",
+]
+
+[project.optional-dependencies]
+app = ["streamlit>=1.40"]
+corp = ["truststore"]  # use the OS certificate store behind corporate proxies
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests", "app", "scripts"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+
+[tool.ruff.lint.per-file-ignores]
+"app/streamlit_app.py" = ["E402"]  # sys.path fallback must run before the imports

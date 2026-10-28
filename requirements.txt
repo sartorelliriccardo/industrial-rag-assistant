@@ -1,0 +1,6 @@
+pymupdf>=1.24
+faiss-cpu>=1.8
+fastembed>=0.4
+numpy>=1.26
+anthropic>=0.40
+streamlit>=1.40
