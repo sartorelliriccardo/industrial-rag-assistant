@@ -15,6 +15,7 @@ from rag_assistant.llm import LLMProvider
 from rag_assistant.models import Answer, Chunk, RetrievedChunk
 from rag_assistant.pdf_loader import load_pdf_bytes
 from rag_assistant.retrieval import retrieve
+from rag_assistant.textutil import is_table_of_contents
 
 
 class RagPipeline:
@@ -35,6 +36,20 @@ class RagPipeline:
         self.top_k = top_k
         self.min_score = min_score
         self._index: VectorIndex | None = None
+        self.skipped_pages: dict[str, list[int]] = {}  # index pages left out, per document
+
+    @property
+    def _learns_weights(self) -> bool:
+        """Keyword search must see all chunks to know which words are rare."""
+        return hasattr(self.embedder, "fit")
+
+    def _rebuild(self, chunks: list[Chunk]) -> None:
+        """(Re)build the whole index from chunks, refitting the word weights first."""
+        texts = [c.text for c in chunks]
+        self.embedder.fit(texts)  # type: ignore[attr-defined]
+        vectors = self.embedder.embed(texts)
+        self._index = VectorIndex(dim=vectors.shape[1])
+        self._index.add(chunks, vectors)
 
     @property
     def documents(self) -> list[str]:
@@ -51,7 +66,17 @@ class RagPipeline:
     def add_pdf_bytes(self, data: bytes, doc_name: str) -> int:
         """Index a PDF (replacing any previous one with the same name). Returns #chunks."""
         pages = load_pdf_bytes(data, doc_name)  # raises PdfError before touching the index
-        chunks = split_pages(pages, self.chunk_size, self.chunk_overlap)
+        kept = [p for p in pages if not is_table_of_contents(p.text)]
+        if not kept:  # never drop a whole document just because it looks like an index
+            kept = pages
+        self.skipped_pages[doc_name] = [p.page_number for p in pages if p not in kept]
+        chunks = split_pages(kept, self.chunk_size, self.chunk_overlap)
+
+        if self._learns_weights:
+            others = [c for c in self.chunks if c.doc_name != doc_name]
+            self._rebuild(others + chunks)
+            return len(chunks)
+
         vectors = self.embedder.embed([c.text for c in chunks])
         if self._index is None:
             self._index = VectorIndex(dim=vectors.shape[1])
@@ -66,9 +91,19 @@ class RagPipeline:
     def clear(self) -> None:
         """Forget every document (the index and the extracted text go with it)."""
         self._index = None
+        self.skipped_pages.clear()
 
     def remove(self, doc_name: str) -> None:
-        if self._index:
+        self.skipped_pages.pop(doc_name, None)
+        if not self._index:
+            return
+        if self._learns_weights:
+            remaining = [c for c in self.chunks if c.doc_name != doc_name]
+            if remaining:
+                self._rebuild(remaining)
+            else:
+                self._index = None
+        else:
             self._index.remove_document(doc_name)
 
     def search(self, question: str) -> list[RetrievedChunk]:

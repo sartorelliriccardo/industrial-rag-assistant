@@ -73,8 +73,8 @@ Technical details are in the **Architecture** tab, and how well it works is in t
 | Step | Module | Technology | What it does |
 |---|---|---|---|
 | Reading | `pdf_loader.py` | PyMuPDF | Extracts the text of each page keeping document name and page number; clear errors for empty, corrupted, protected or scanned PDFs |
-| Chunking | `chunking.py` | Python | Sliding window of 400 characters with 80 of overlap, cut on whitespace, never across a page |
-| Embeddings | `embeddings.py` | Default: stemmed keywords hashed into a vector (no model). Optional: FastEmbed (ONNX), multilingual MiniLM quantised to 8 bit | Turns text into a unit-length vector. Keyword mode matches shared words; the neural mode matches meaning, also across Italian and English |
+| Chunking | `chunking.py`, `pipeline.py` | Python | Sliding window of 800 characters with 120 of overlap, cut on whitespace, never across a page. Index (table of contents) pages are left out: they repeat every title and crowd out the real answer |
+| Embeddings | `embeddings.py` | Default: stemmed keywords hashed into a vector, rare words weighing more (no model). Optional: FastEmbed (ONNX), multilingual MiniLM quantised to 8 bit | Turns text into a unit-length vector. Keyword mode matches shared words; the neural mode matches meaning, also across Italian and English |
 | Index | `index.py` | FAISS (exact inner-product index) | Stores the vectors; with unit vectors the inner product is the cosine similarity |
 | Retrieval | `retrieval.py` | - | Finds the top-k most similar passages with their score |
 | Generation | `generation.py`, `prompts.py` | - | Applies the score threshold, removes injected instructions, builds the constrained prompt and verifies the citations |
@@ -188,8 +188,8 @@ I dettagli tecnici sono nella scheda **Architettura**, e quanto funziona bene ne
 | Passaggio | Modulo | Tecnologia | Cosa fa |
 |---|---|---|---|
 | Lettura | `pdf_loader.py` | PyMuPDF | Estrae il testo di ogni pagina tenendo nome del documento e numero di pagina; errori chiari per PDF vuoti, danneggiati, protetti o scansionati |
-| Chunking | `chunking.py` | Python | Finestra scorrevole di 400 caratteri con 80 di sovrapposizione, tagliata sugli spazi, mai a cavallo di una pagina |
-| Embedding | `embeddings.py` | Predefinito: parole chiave radicalizzate in un vettore (nessun modello). Opzionale: FastEmbed (ONNX), MiniLM multilingue quantizzato a 8 bit | Trasforma il testo in un vettore di lunghezza unitaria. La modalità per parole chiave trova le parole in comune; quella neurale trova il significato, anche tra italiano e inglese |
+| Chunking | `chunking.py`, `pipeline.py` | Python | Finestra scorrevole di 800 caratteri con 120 di sovrapposizione, tagliata sugli spazi, mai a cavallo di una pagina. Le pagine d'indice vengono escluse: ripetono ogni titolo e coprono la risposta vera |
+| Embedding | `embeddings.py` | Predefinito: parole chiave radicalizzate in un vettore, con più peso alle parole rare (nessun modello). Opzionale: FastEmbed (ONNX), MiniLM multilingue quantizzato a 8 bit | Trasforma il testo in un vettore di lunghezza unitaria. La modalità per parole chiave trova le parole in comune; quella neurale trova il significato, anche tra italiano e inglese |
 | Indice | `index.py` | FAISS (indice esatto a prodotto scalare) | Conserva i vettori; con vettori unitari il prodotto scalare è la similarità coseno |
 | Ricerca | `retrieval.py` | - | Trova i top-k passaggi più simili con il loro punteggio |
 | Generazione | `generation.py`, `prompts.py` | - | Applica la soglia di punteggio, toglie le istruzioni iniettate, costruisce il prompt vincolato e verifica le citazioni |

@@ -81,9 +81,18 @@ def test_extractive_provider_quotes_the_best_sentence():
         retrieved("The motor power is 22 kW. The weight is 185 kg.", page=1),
         retrieved("Greasing every 2000 hours with lithium grease.", page=2, rank=2),
     ]
-    answer = generate_answer("What is the motor power?", ev, ExtractiveProvider(), 0.2)
+    provider = ExtractiveProvider(context_sentences=0)
+    answer = generate_answer("What is the motor power?", ev, provider, 0.2)
     assert answer.status == "answered" and "22 kW" in answer.text
     assert "185 kg" not in answer.text
+
+
+def test_extractive_provider_also_quotes_the_next_sentence_by_default():
+    """A procedure is a list of steps: the best match is often only its first step."""
+    ev = [retrieved("Proceed as follows: remove the cock. Place a container. Open the knob.")]
+    answer = generate_answer("How do I remove the cock?", ev, ExtractiveProvider(), 0.2)
+    assert "remove the cock" in answer.text and "Place a container" in answer.text
+    assert "Open the knob" not in answer.text  # only one sentence of context
 
 
 def test_extractive_provider_refuses_when_question_word_is_missing_from_sources():

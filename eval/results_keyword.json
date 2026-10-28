@@ -7,6 +7,7 @@
       "retrieval_hit_at_1": 0.971,
       "retrieval_hit_at_3": 1.0,
       "retrieval_hit_at_k": 1.0,
+      "retrieval_all_gold_pages": 1.0,
       "retrieval_mrr": 0.981,
       "answer_correct": 0.886,
       "citation_hit": 1.0,
@@ -16,10 +17,10 @@
       "config": {
         "search": "LexicalEmbedder",
         "provider": "extractive",
-        "chunk_size": 400,
-        "chunk_overlap": 80,
+        "chunk_size": 800,
+        "chunk_overlap": 120,
         "top_k": 5,
-        "min_score": 0.1,
+        "min_score": 0.05,
         "n_chunks": 11
       }
     }
@@ -31,7 +32,7 @@
       "question": "What is the rated flow of the P-200 pump?",
       "answerable": true,
       "status": "answered",
-      "answer": "Rated flow is 120 m3/h. [pump_P200_manual.pdf, p. 1] Rated flow 120 m3/h. [pump_P200_datasheet_revA.pdf, p. 1]",
+      "answer": "Rated flow is 120 m3/h. Rated head is 45 m. [pump_P200_manual.pdf, p. 1] Rated flow 120 m3/h. Rated head 45 m. [pump_P200_datasheet_revA.pdf, p. 1]",
       "cited": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1"
@@ -44,6 +45,7 @@
         "plant_safety_procedures.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -56,7 +58,7 @@
       "question": "What is the rated head of the P-200 pump?",
       "answerable": true,
       "status": "answered",
-      "answer": "Rated head is 45 m. [pump_P200_manual.pdf, p. 1] Rated head 45 m. [pump_P200_datasheet_revA.pdf, p. 1]",
+      "answer": "Rated head is 45 m. The motor power is 22 kW. [pump_P200_manual.pdf, p. 1] Rated head 45 m. The maximum operating pressure is 12 bar. [pump_P200_datasheet_revA.pdf, p. 1]",
       "cited": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1"
@@ -69,6 +71,7 @@
         "plant_safety_procedures.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -81,18 +84,19 @@
       "question": "What is the motor power of the P-200 pump?",
       "answerable": true,
       "status": "answered",
-      "answer": "The motor power is 22 kW. [pump_P200_manual.pdf, p. 1]",
+      "answer": "The motor power is 22 kW. The maximum operating pressure is 10 bar. [pump_P200_manual.pdf, p. 1]",
       "cited": [
         "pump_P200_manual.pdf#p1"
       ],
       "retrieved": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
-        "pump_P200_manual.pdf#p4",
         "plant_safety_procedures.pdf#p2",
+        "pump_P200_manual.pdf#p4",
         "plant_safety_procedures.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -105,7 +109,7 @@
       "question": "What is the maximum fluid temperature for the P-200?",
       "answerable": true,
       "status": "answered",
-      "answer": "The maximum fluid temperature is 90 degC. [pump_P200_manual.pdf, p. 1]",
+      "answer": "The maximum fluid temperature is 90 degC. Do not run the pump dry: dry running destroys the mechanical seal within minutes. [pump_P200_manual.pdf, p. 1]",
       "cited": [
         "pump_P200_manual.pdf#p1"
       ],
@@ -117,6 +121,7 @@
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -129,7 +134,7 @@
       "question": "What is the maximum operating pressure of the P-200 pump?",
       "answerable": true,
       "status": "answered",
-      "answer": "The maximum operating pressure is 10 bar. [pump_P200_manual.pdf, p. 1] The maximum operating pressure is 12 bar. [pump_P200_datasheet_revA.pdf, p. 1]",
+      "answer": "The maximum operating pressure is 10 bar. The maximum fluid temperature is 90 degC. [pump_P200_manual.pdf, p. 1] The maximum operating pressure is 12 bar. Bearing lubrication interval: 1500 operating hours. [pump_P200_datasheet_revA.pdf, p. 1]",
       "cited": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1"
@@ -138,10 +143,11 @@
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
         "plant_safety_procedures.pdf#p3",
-        "pump_P200_manual.pdf#p4",
-        "pump_P200_manual.pdf#p2"
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p4"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -154,20 +160,21 @@
       "question": "How often should the P-200 bearings be lubricated?",
       "answerable": true,
       "status": "answered",
-      "answer": "Bearing lubrication interval: 1500 operating hours. [pump_P200_datasheet_revA.pdf, p. 1] Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. [pump_P200_manual.pdf, p. 4] Lubricate the bearings every 2000 operating hours with lithium grease NLGI 2. [pump_P200_manual.pdf, p. 2]",
+      "answer": "Bearing lubrication interval: 1500 operating hours. Weight of the pump without motor: 185 kg. [pump_P200_datasheet_revA.pdf, p. 1] Lubricate the bearings every 2000 operating hours with lithium grease NLGI 2. Inspect the mechanical seal every 4000 operating hours. [pump_P200_manual.pdf, p. 2] Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. [pump_P200_manual.pdf, p. 4]",
       "cited": [
         "pump_P200_datasheet_revA.pdf#p1",
-        "pump_P200_manual.pdf#p4",
-        "pump_P200_manual.pdf#p2"
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p4"
       ],
       "retrieved": [
         "pump_P200_datasheet_revA.pdf#p1",
-        "pump_P200_manual.pdf#p4",
         "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p4",
         "pump_P200_manual.pdf#p1",
         "plant_safety_procedures.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 0.6666666666666666,
@@ -190,6 +197,7 @@
         "plant_safety_procedures.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": false,
       "citation_hit": null,
       "citation_precision": null,
@@ -204,7 +212,7 @@
       "question": "How often should the mechanical seal be inspected?",
       "answerable": true,
       "status": "answered",
-      "answer": "Inspect the mechanical seal every 4000 operating hours. [pump_P200_manual.pdf, p. 2]",
+      "answer": "Inspect the mechanical seal every 4000 operating hours. Replace the seal if leakage exceeds 10 drops per minute. [pump_P200_manual.pdf, p. 2]",
       "cited": [
         "pump_P200_manual.pdf#p2"
       ],
@@ -216,6 +224,7 @@
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -228,7 +237,7 @@
       "question": "When must the seal be replaced because of leakage?",
       "answerable": true,
       "status": "answered",
-      "answer": "Replace the seal if leakage exceeds 10 drops per minute. [pump_P200_manual.pdf, p. 2]",
+      "answer": "Replace the seal if leakage exceeds 10 drops per minute. The vibration limit measured at the bearing housing is 4.5 mm/s RMS. [pump_P200_manual.pdf, p. 2]",
       "cited": [
         "pump_P200_manual.pdf#p2"
       ],
@@ -240,6 +249,7 @@
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -252,7 +262,7 @@
       "question": "What is the vibration limit at the bearing housing?",
       "answerable": true,
       "status": "answered",
-      "answer": "The vibration limit measured at the bearing housing is 4.5 mm/s RMS. [pump_P200_manual.pdf, p. 2]",
+      "answer": "The vibration limit measured at the bearing housing is 4.5 mm/s RMS. Record every maintenance action in the maintenance log of the plant. [pump_P200_manual.pdf, p. 2]",
       "cited": [
         "pump_P200_manual.pdf#p2"
       ],
@@ -264,6 +274,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -276,7 +287,7 @@
       "question": "What is the tightening torque of the M12 casing bolts?",
       "answerable": true,
       "status": "answered",
-      "answer": "Casing bolts M12 must be tightened to 65 N.m. [pump_P200_manual.pdf, p. 3]",
+      "answer": "Casing bolts M12 must be tightened to 65 N.m. The impeller nut must be tightened to 120 N.m. [pump_P200_manual.pdf, p. 3]",
       "cited": [
         "pump_P200_manual.pdf#p3"
       ],
@@ -288,6 +299,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -300,7 +312,7 @@
       "question": "What is the tightening torque of the impeller nut?",
       "answerable": true,
       "status": "answered",
-      "answer": "The impeller nut must be tightened to 120 N.m. [pump_P200_manual.pdf, p. 3]",
+      "answer": "The impeller nut must be tightened to 120 N.m. Coupling guard bolts M8 must be tightened to 25 N.m. [pump_P200_manual.pdf, p. 3]",
       "cited": [
         "pump_P200_manual.pdf#p3"
       ],
@@ -312,6 +324,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -324,7 +337,7 @@
       "question": "What is the torque for the M8 coupling guard bolts?",
       "answerable": true,
       "status": "answered",
-      "answer": "Coupling guard bolts M8 must be tightened to 25 N.m. [pump_P200_manual.pdf, p. 3]",
+      "answer": "Coupling guard bolts M8 must be tightened to 25 N.m. Always tighten bolts in a cross pattern, in two passes, using a calibrated torque wrench. [pump_P200_manual.pdf, p. 3]",
       "cited": [
         "pump_P200_manual.pdf#p3"
       ],
@@ -336,6 +349,7 @@
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -360,6 +374,7 @@
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -372,7 +387,7 @@
       "question": "What should I check if the P-200 shows low flow?",
       "answerable": true,
       "status": "answered",
-      "answer": "Low flow: check whether the suction strainer is clogged and whether air is entering the suction line. [pump_P200_manual.pdf, p. 4]",
+      "answer": "Low flow: check whether the suction strainer is clogged and whether air is entering the suction line. Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. [pump_P200_manual.pdf, p. 4]",
       "cited": [
         "pump_P200_manual.pdf#p4"
       ],
@@ -384,6 +399,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -396,7 +412,7 @@
       "question": "What is the required NPSH of the P-200?",
       "answerable": true,
       "status": "answered",
-      "answer": "Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. [pump_P200_manual.pdf, p. 4]",
+      "answer": "Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. Excessive vibration: check the alignment of pump and motor and the foundation bolts. [pump_P200_manual.pdf, p. 4]",
       "cited": [
         "pump_P200_manual.pdf#p4"
       ],
@@ -408,6 +424,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -420,7 +437,7 @@
       "question": "What can cause a bearing temperature above 80 degC?",
       "answerable": true,
       "status": "answered",
-      "answer": "Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. [pump_P200_manual.pdf, p. 4]",
+      "answer": "Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. [pump_P200_manual.pdf, p. 4]",
       "cited": [
         "pump_P200_manual.pdf#p4"
       ],
@@ -432,6 +449,7 @@
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -444,18 +462,19 @@
       "question": "What is the weight of the pump without motor?",
       "answerable": true,
       "status": "answered",
-      "answer": "Weight of the pump without motor: 185 kg. [pump_P200_datasheet_revA.pdf, p. 1]",
+      "answer": "Weight of the pump without motor: 185 kg. Note: this datasheet was issued before the 2023 redesign of the casing. [pump_P200_datasheet_revA.pdf, p. 1]",
       "cited": [
         "pump_P200_datasheet_revA.pdf#p1"
       ],
       "retrieved": [
         "pump_P200_datasheet_revA.pdf#p1",
-        "pump_P200_manual.pdf#p1",
         "plant_safety_procedures.pdf#p2",
+        "pump_P200_manual.pdf#p1",
         "pump_P200_manual.pdf#p4",
         "plant_safety_procedures.pdf#p3"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -468,7 +487,7 @@
       "question": "Qual e la pressione massima di esercizio del compressore C-50?",
       "answerable": true,
       "status": "answered",
-      "answer": "La pressione massima di esercizio e 8 bar. [compressore_C50_manuale.pdf, p. 1]",
+      "answer": "La pressione massima di esercizio e 8 bar. La portata e 5,2 m3/min. [compressore_C50_manuale.pdf, p. 1]",
       "cited": [
         "compressore_C50_manuale.pdf#p1"
       ],
@@ -480,6 +499,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -492,7 +512,7 @@
       "question": "Qual e la potenza del motore del compressore C-50?",
       "answerable": true,
       "status": "answered",
-      "answer": "La potenza del motore e 30 kW. [compressore_C50_manuale.pdf, p. 1]",
+      "answer": "La potenza del motore e 30 kW. Il livello di rumore e 72 dB(A) a un metro di distanza. [compressore_C50_manuale.pdf, p. 1]",
       "cited": [
         "compressore_C50_manuale.pdf#p1"
       ],
@@ -504,6 +524,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -516,7 +537,7 @@
       "question": "Qual e la portata del compressore C-50?",
       "answerable": true,
       "status": "answered",
-      "answer": "Compressore a vite C-50 - Manuale di manutenzione. [compressore_C50_manuale.pdf, p. 1]",
+      "answer": "Compressore a vite C-50 - Manuale di manutenzione. La pressione massima di esercizio e 8 bar. [compressore_C50_manuale.pdf, p. 1]",
       "cited": [
         "compressore_C50_manuale.pdf#p1"
       ],
@@ -528,6 +549,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": false,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -542,7 +564,7 @@
       "question": "Ogni quante ore va sostituito l'olio del compressore?",
       "answerable": true,
       "status": "answered",
-      "answer": "L'olio deve essere sostituito ogni 4000 ore con olio sintetico ISO VG 46. [compressore_C50_manuale.pdf, p. 2]",
+      "answer": "L'olio deve essere sostituito ogni 4000 ore con olio sintetico ISO VG 46. Il filtro dell'aria deve essere sostituito ogni 2000 ore. [compressore_C50_manuale.pdf, p. 2]",
       "cited": [
         "compressore_C50_manuale.pdf#p2"
       ],
@@ -554,6 +576,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -576,6 +599,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 3,
+      "gold_recall": 1.0,
       "correct": false,
       "citation_hit": null,
       "citation_precision": null,
@@ -590,7 +614,7 @@
       "question": "Ogni quante ore va sostituito il filtro dell'aria?",
       "answerable": true,
       "status": "answered",
-      "answer": "Il filtro dell'aria deve essere sostituito ogni 2000 ore. [compressore_C50_manuale.pdf, p. 2]",
+      "answer": "Il filtro dell'aria deve essere sostituito ogni 2000 ore. Il filtro separatore olio deve essere sostituito ogni 4000 ore. [compressore_C50_manuale.pdf, p. 2]",
       "cited": [
         "compressore_C50_manuale.pdf#p2"
       ],
@@ -602,6 +626,7 @@
         "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -626,6 +651,7 @@
         "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -638,7 +664,7 @@
       "question": "Cosa significa l'allarme E01?",
       "answerable": true,
       "status": "answered",
-      "answer": "Allarme E01: la temperatura dell'olio supera 110 gradi e il compressore si arresta automaticamente; controllare il radiatore e il livello dell'olio. [compressore_C50_manuale.pdf, p. 3]",
+      "answer": "Allarme E01: la temperatura dell'olio supera 110 gradi e il compressore si arresta automaticamente; controllare il radiatore e il livello dell'olio. Allarme E02: la pressione differenziale del filtro e alta; sostituire il filtro dell'aria. [compressore_C50_manuale.pdf, p. 3]",
       "cited": [
         "compressore_C50_manuale.pdf#p3"
       ],
@@ -650,6 +676,7 @@
         "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -672,6 +699,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": false,
       "citation_hit": null,
       "citation_precision": null,
@@ -698,6 +726,7 @@
         "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -710,7 +739,7 @@
       "question": "Where is the fire assembly point?",
       "answerable": true,
       "status": "answered",
-      "answer": "The fire assembly point is Gate B. [plant_safety_procedures.pdf, p. 3]",
+      "answer": "The fire assembly point is Gate B. The internal emergency number is 5555. [plant_safety_procedures.pdf, p. 3]",
       "cited": [
         "plant_safety_procedures.pdf#p3"
       ],
@@ -722,6 +751,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -734,7 +764,7 @@
       "question": "What is the internal emergency number?",
       "answerable": true,
       "status": "answered",
-      "answer": "The internal emergency number is 5555. [plant_safety_procedures.pdf, p. 3]",
+      "answer": "The internal emergency number is 5555. Every incident must be reported within 24 hours. [plant_safety_procedures.pdf, p. 3]",
       "cited": [
         "plant_safety_procedures.pdf#p3"
       ],
@@ -746,6 +776,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -770,6 +801,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -788,12 +820,13 @@
       ],
       "retrieved": [
         "plant_safety_procedures.pdf#p1",
-        "plant_safety_procedures.pdf#p2",
         "compressore_C50_manuale.pdf#p3",
+        "plant_safety_procedures.pdf#p2",
         "compressore_C50_manuale.pdf#p2",
         "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -806,18 +839,19 @@
       "question": "When is hearing protection mandatory?",
       "answerable": true,
       "status": "answered",
-      "answer": "Hearing protection is mandatory where noise exceeds 85 dB(A). [plant_safety_procedures.pdf, p. 2]",
+      "answer": "Hearing protection is mandatory where noise exceeds 85 dB(A). Entering a confined space requires a permit signed by the shift supervisor. [plant_safety_procedures.pdf, p. 2]",
       "cited": [
         "plant_safety_procedures.pdf#p2"
       ],
       "retrieved": [
         "plant_safety_procedures.pdf#p2",
         "pump_P200_datasheet_revA.pdf#p1",
-        "pump_P200_manual.pdf#p4",
         "pump_P200_manual.pdf#p1",
+        "pump_P200_manual.pdf#p4",
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -842,6 +876,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -854,7 +889,7 @@
       "question": "What is the maximum pressure of the pump?",
       "answerable": true,
       "status": "answered",
-      "answer": "The maximum operating pressure is 10 bar. [pump_P200_manual.pdf, p. 1] The maximum operating pressure is 12 bar. [pump_P200_datasheet_revA.pdf, p. 1]",
+      "answer": "The maximum operating pressure is 10 bar. The maximum fluid temperature is 90 degC. [pump_P200_manual.pdf, p. 1] The maximum operating pressure is 12 bar. Bearing lubrication interval: 1500 operating hours. [pump_P200_datasheet_revA.pdf, p. 1]",
       "cited": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1"
@@ -867,6 +902,7 @@
         "pump_P200_manual.pdf#p4"
       ],
       "hit_rank": 1,
+      "gold_recall": 1.0,
       "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
@@ -889,6 +925,7 @@
         "plant_safety_procedures.pdf#p2"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
@@ -901,7 +938,7 @@
       "question": "Qual e il peso del compressore C-50?",
       "answerable": false,
       "status": "answered",
-      "answer": "Compressore a vite C-50 - Manuale di manutenzione. [compressore_C50_manuale.pdf, p. 1]",
+      "answer": "Compressore a vite C-50 - Manuale di manutenzione. La pressione massima di esercizio e 8 bar. [compressore_C50_manuale.pdf, p. 1]",
       "cited": [
         "compressore_C50_manuale.pdf#p1"
       ],
@@ -913,6 +950,7 @@
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
@@ -937,6 +975,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
@@ -952,13 +991,14 @@
       "answer": "The uploaded documents do not contain enough information to answer this question.",
       "cited": [],
       "retrieved": [
-        "plant_safety_procedures.pdf#p1",
         "pump_P200_manual.pdf#p4",
         "pump_P200_manual.pdf#p2",
+        "plant_safety_procedures.pdf#p1",
         "plant_safety_procedures.pdf#p2",
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
@@ -981,6 +1021,7 @@
         "plant_safety_procedures.pdf#p1"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
@@ -996,13 +1037,14 @@
       "answer": "The uploaded documents do not contain enough information to answer this question.",
       "cited": [],
       "retrieved": [
-        "compressore_C50_manuale.pdf#p1",
         "compressore_C50_manuale.pdf#p3",
+        "compressore_C50_manuale.pdf#p1",
         "plant_safety_procedures.pdf#p2",
         "plant_safety_procedures.pdf#p1",
         "compressore_C50_manuale.pdf#p2"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
@@ -1018,13 +1060,14 @@
       "answer": "The uploaded documents do not contain enough information to answer this question.",
       "cited": [],
       "retrieved": [
-        "pump_P200_manual.pdf#p3",
         "pump_P200_datasheet_revA.pdf#p1",
+        "pump_P200_manual.pdf#p3",
         "plant_safety_procedures.pdf#p2",
         "plant_safety_procedures.pdf#p1",
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
@@ -1047,6 +1090,7 @@
         "plant_safety_procedures.pdf#p3"
       ],
       "hit_rank": null,
+      "gold_recall": null,
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,

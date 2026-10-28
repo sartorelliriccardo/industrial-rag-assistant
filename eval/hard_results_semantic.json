@@ -9,7 +9,7 @@
       "retrieval_hit_at_k": 0.938,
       "retrieval_all_gold_pages": 0.812,
       "retrieval_mrr": 0.776,
-      "answer_correct": 0.062,
+      "answer_correct": 0.125,
       "citation_hit": 1.0,
       "citation_precision": 1.0,
       "abstention_correct": 0.5,
@@ -17,8 +17,8 @@
       "config": {
         "search": "FastEmbedEmbedder",
         "provider": "extractive",
-        "chunk_size": 400,
-        "chunk_overlap": 80,
+        "chunk_size": 800,
+        "chunk_overlap": 120,
         "top_k": 5,
         "min_score": 0.25,
         "n_chunks": 11
@@ -82,7 +82,7 @@
       "question": "The P-200 is noisy and the bearing temperature is above 80 degC: what could be the causes?",
       "answerable": true,
       "status": "answered",
-      "answer": "Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. [pump_P200_manual.pdf, p. 4]",
+      "answer": "Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. [pump_P200_manual.pdf, p. 4]",
       "cited": [
         "pump_P200_manual.pdf#p4"
       ],
@@ -95,13 +95,11 @@
       ],
       "hit_rank": 1,
       "gold_recall": 1.0,
-      "correct": false,
+      "correct": true,
       "citation_hit": true,
       "citation_precision": 1.0,
       "abstained": false,
-      "problems": [
-        "missing expected keyword(s)"
-      ]
+      "problems": []
     },
     {
       "id": "h04",
@@ -285,7 +283,7 @@
       "question": "The vibration at the bearing housing is 5 mm/s. Is that acceptable?",
       "answerable": true,
       "status": "answered",
-      "answer": "The vibration limit measured at the bearing housing is 4.5 mm/s RMS. [pump_P200_manual.pdf, p. 2]",
+      "answer": "The vibration limit measured at the bearing housing is 4.5 mm/s RMS. Record every maintenance action in the maintenance log of the plant. [pump_P200_manual.pdf, p. 2]",
       "cited": [
         "pump_P200_manual.pdf#p2"
       ],
@@ -337,7 +335,7 @@
       "question": "Can the P-200 pump water at 95 degC?",
       "answerable": true,
       "status": "answered",
-      "answer": "The P-200 is a single-stage centrifugal pump for process water. [pump_P200_manual.pdf, p. 1]",
+      "answer": "The P-200 is a single-stage centrifugal pump for process water. Rated flow is 120 m3/h. [pump_P200_manual.pdf, p. 1]",
       "cited": [
         "pump_P200_manual.pdf#p1"
       ],
@@ -462,7 +460,7 @@
       "question": "What is the available NPSH at the plant where the P-200 is installed?",
       "answerable": false,
       "status": "answered",
-      "answer": "Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. [pump_P200_manual.pdf, p. 4]",
+      "answer": "Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. Excessive vibration: check the alignment of pump and motor and the foundation bolts. [pump_P200_manual.pdf, p. 4]",
       "cited": [
         "pump_P200_manual.pdf#p4"
       ],

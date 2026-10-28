@@ -56,9 +56,14 @@ class ExtractiveProvider:
     refuse questions about a topic the sources only mention in passing.
     """
 
-    def __init__(self, min_overlap: float = 0.5, max_sentences: int = 3):
+    def __init__(
+        self, min_overlap: float = 0.5, max_sentences: int = 3, context_sentences: int = 1
+    ):
         self.min_overlap = min_overlap
         self.max_sentences = max_sentences
+        # Procedures in manuals are lists of steps, and the best-matching sentence is often
+        # only the first step or the heading: also quote the next `context_sentences`.
+        self.context_sentences = context_sentences
 
     def complete(self, system: str, user: str) -> str:
         match = QUESTION_RE.search(user)
@@ -66,25 +71,26 @@ class ExtractiveProvider:
         if not question_tokens:
             return INSUFFICIENT_TOKEN
 
-        sentences = [
-            (source_id, s.strip())
-            for source_id, text in SOURCE_RE.findall(user)
-            for s in SENTENCE_SPLIT.split(text)
-        ]
-        token_sets = [_tokens(s) for _, s in sentences]
-        n = len(sentences)
+        per_source: dict[str, list[str]] = {}
+        for source_id, text in SOURCE_RE.findall(user):
+            per_source[source_id] = [s.strip() for s in SENTENCE_SPLIT.split(text) if s.strip()]
+        token_sets = {sid: [_tokens(s) for s in sents] for sid, sents in per_source.items()}
+        n = sum(len(sents) for sents in per_source.values())
         weight = {
-            t: math.log(1 + n / max(sum(t in ts for ts in token_sets), 0.5))
+            t: math.log(
+                1 + n / max(sum(t in ts for sets in token_sets.values() for ts in sets), 0.5)
+            )
             for t in question_tokens
         }
         total = sum(weight.values())
 
-        best_per_source: dict[str, tuple[float, str]] = {}
-        for (source_id, sentence), ts in zip(sentences, token_sets, strict=True):
-            score = sum(weight[t] for t in question_tokens & ts) / total
-            if score > best_per_source.get(source_id, (-1.0, ""))[0]:
-                best_per_source[source_id] = (score, sentence)
-        best_per_source = [(s, sid, sent) for sid, (s, sent) in best_per_source.items()]
+        # best sentence of each source: (score, source id, position inside the source)
+        best_per_source: list[tuple[float, str, int]] = []
+        for sid, sets in token_sets.items():
+            scores = [sum(weight[t] for t in question_tokens & ts) / total for ts in sets]
+            if scores:
+                position = max(range(len(scores)), key=scores.__getitem__)
+                best_per_source.append((scores[position], sid, position))
 
         best_per_source.sort(key=lambda x: -x[0])
         if not best_per_source or best_per_source[0][0] < self.min_overlap:
@@ -92,7 +98,11 @@ class ExtractiveProvider:
         top = best_per_source[0][0]
         # keep other sources only if they match nearly as well (e.g. a conflicting document)
         chosen = [x for x in best_per_source if x[0] >= max(self.min_overlap, 0.8 * top)]
-        return " ".join(f"{sentence} [{sid}]" for _, sid, sentence in chosen[: self.max_sentences])
+        quotes = []
+        for _, sid, position in chosen[: self.max_sentences]:
+            window = per_source[sid][position : position + 1 + self.context_sentences]
+            quotes.append(f"{' '.join(window)} [{sid}]")
+        return " ".join(quotes)
 
 
 def get_provider(name: str, api_key: str | None = None) -> LLMProvider:

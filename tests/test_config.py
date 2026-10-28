@@ -6,7 +6,7 @@ from rag_assistant.config import get_chunk_settings
 def test_default(monkeypatch):
     monkeypatch.delenv("CHUNK_SIZE", raising=False)
     monkeypatch.delenv("CHUNK_OVERLAP", raising=False)
-    assert get_chunk_settings() == (400, 80)
+    assert get_chunk_settings() == (800, 120)
 
 
 def test_values_from_environment(monkeypatch):

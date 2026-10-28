@@ -86,6 +86,23 @@ class LexicalEmbedder:
 
     def __init__(self, dim: int = 4096):
         self.dim = dim
+        self._idf: dict[str, float] = {}
+        self._idf_unseen = 1.0  # until `fit` is called every word weighs the same
+
+    def fit(self, texts: list[str]) -> None:
+        """Learn how rare each word is in the indexed chunks (inverse document frequency).
+
+        Without it, words that occur on every page of a manual ("dental", "unit") count as
+        much as the one that identifies the section ("condensate"). A word found in few
+        chunks weighs more. The pipeline calls this each time documents are added or removed.
+        """
+        document_frequency: dict[str, int] = {}
+        for text in texts:
+            for token in set(content_tokens(text)):
+                document_frequency[token] = document_frequency.get(token, 0) + 1
+        n = len(texts)
+        self._idf = {t: math.log(1 + n / df) for t, df in document_frequency.items()}
+        self._idf_unseen = math.log(1 + n) if n else 1.0
 
     def describe(self, text: str) -> list[tuple[str, int, float]]:
         """For each content word of `text`: (word as stemmed, vector position, weight).
@@ -97,7 +114,11 @@ class LexicalEmbedder:
         for token in content_tokens(text):
             counts[token] = counts.get(token, 0) + 1
         return [
-            (token, zlib.crc32(token.encode("utf-8")) % self.dim, 1 + math.log(count))
+            (
+                token,
+                zlib.crc32(token.encode("utf-8")) % self.dim,
+                (1 + math.log(count)) * self._idf.get(token, self._idf_unseen),
+            )
             for token, count in counts.items()
         ]
 

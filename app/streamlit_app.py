@@ -252,7 +252,12 @@ def add_file(name: str, data: bytes) -> None:
         with st.spinner(t(lang, "indexing", name=name)):
             n = pipeline.add_pdf_bytes(data, name)
         files[name] = data
-        flash("success", t(lang, "indexed", name=name, n=n))
+        skipped = pipeline.skipped_pages.get(name, [])
+        if skipped:
+            pages = ", ".join(str(p) for p in skipped)
+            flash("success", t(lang, "indexed_skipped", name=name, n=n, pages=pages))
+        else:
+            flash("success", t(lang, "indexed", name=name, n=n))
     except PdfError as exc:
         flash("error", pdf_error_message(lang, exc, name))
 

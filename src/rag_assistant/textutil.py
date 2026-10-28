@@ -21,6 +21,20 @@ def stem(word: str) -> str:
     return word if any(c.isdigit() for c in word) else word[:STEM_LENGTH]
 
 
+TOC_ENTRY_RE = re.compile(r"\.{5,}\s*\d+")
+TOC_MIN_ENTRIES = 8
+
+
+def is_table_of_contents(text: str) -> bool:
+    """True for an index page: many 'heading ........ page number' lines.
+
+    Such pages repeat every section title of the manual, so they match almost any question
+    and crowd the real answer out of the results (measured on a 110-page manual: 8 of the
+    60 top-5 slots on 12 questions). A normal page has no, or very few, dot-leader entries.
+    """
+    return len(TOC_ENTRY_RE.findall(text)) >= TOC_MIN_ENTRIES
+
+
 def content_tokens(text: str) -> list[str]:
     """Lower-case, drop stopwords and very short words, stem the rest."""
     return [

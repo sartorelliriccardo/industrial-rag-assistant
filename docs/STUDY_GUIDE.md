@@ -29,7 +29,7 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 
 **Compromesso sulla dimensione.** Chunk piccoli: più precisi ma perdono il contesto. Chunk grandi: più contesto ma più rumore e il vettore diventa una "media" di troppi argomenti. Non si indovina: si misura (script di valutazione con `--chunk-size`).
 
-**Colloquio.** *Come hai scelto la dimensione dei chunk?* → ho un default ragionevole (400/80) e uno strumento per misurare l'effetto; con un corpus così piccolo (11 chunk) la differenza non è significativa, e lo dichiaro.
+**Colloquio.** *Come hai scelto la dimensione dei chunk?* → ho un default (800/120) scelto misurando su un manuale vero da 110 pagine: con pezzi da 400 caratteri le risposte utili erano 5 su 9, con 800 sono salite a 6. Sul mio corpus sintetico (una pagina = un pezzo) la differenza non si vede, e lo dichiaro.
 
 ## 3. `embeddings.py` — dal testo ai vettori
 **Concetto.** Un embedding è un vettore di numeri (qui 384) che codifica il significato del testo: frasi con significato simile finiscono vicine nello spazio, anche in lingue diverse (la frase italiana sul bullone e quella inglese hanno similarità 0,49, la pizza 0,08).
