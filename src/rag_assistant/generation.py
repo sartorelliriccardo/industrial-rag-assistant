@@ -66,7 +66,12 @@ def generate_answer(
     raw = provider.complete(SYSTEM_PROMPT, build_user_prompt(question, evidence)).strip()
     if INSUFFICIENT_TOKEN in raw:
         return Answer(
-            status="insufficient", text=INSUFFICIENT_MESSAGE, evidence=evidence, flagged=flagged
+            status="insufficient",
+            text=INSUFFICIENT_MESSAGE,
+            evidence=evidence,
+            flagged=flagged,
+            raw=raw,
+            engine_called=True,
         )
 
     citations: list[Citation] = []
@@ -90,6 +95,8 @@ def generate_answer(
         evidence=evidence,
         flagged=flagged,
         invalid_citations=invalid,
+        raw=raw,
+        engine_called=True,
     )
 
 

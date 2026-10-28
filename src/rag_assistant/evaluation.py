@@ -37,6 +37,7 @@ class QuestionResult:
     cited: list[str]
     retrieved: list[str]
     hit_rank: int | None = None  # rank of first gold page in retrieved, None = miss
+    gold_recall: float | None = None  # share of the gold pages found among the retrieved ones
     correct: bool | None = None
     citation_hit: bool | None = None
     citation_precision: float | None = None
@@ -77,6 +78,7 @@ def evaluate_question(pipeline: RagPipeline, q: dict) -> QuestionResult:
 
     gold = {_page_key(g["document"], g["page"]) for g in q["gold"]}
     res.hit_rank = next((i for i, k in enumerate(retrieved_keys, 1) if k in gold), None)
+    res.gold_recall = len(gold & set(retrieved_keys)) / len(gold) if gold else None
     if res.hit_rank is None:
         res.problems.append("retrieval miss: no gold page in top-k")
 
@@ -86,7 +88,9 @@ def evaluate_question(pipeline: RagPipeline, q: dict) -> QuestionResult:
         return res
 
     text = answer.text.lower()
-    has_all = all(k.lower() in text for k in q["expected_keywords"])
+    # every group of alternatives must be matched by at least one of its members
+    groups = q.get("expected_any_of") or [[k] for k in q.get("expected_keywords", [])]
+    has_all = all(any(alt.lower() in text for alt in group) for group in groups)
     has_forbidden = any(k.lower() in text for k in q.get("forbidden_keywords", []))
     res.correct = has_all and not has_forbidden and answer.status == "answered"
     if not has_all:
@@ -119,6 +123,8 @@ def summarize(results: list[QuestionResult]) -> dict:
             sum(r.hit_rank is not None and r.hit_rank <= 3 for r in ans), len(ans)
         ),
         "retrieval_hit_at_k": rate(sum(r.hit_rank is not None for r in ans), len(ans)),
+        # questions whose answer needs several pages: were ALL of them retrieved?
+        "retrieval_all_gold_pages": rate(sum(r.gold_recall == 1.0 for r in ans), len(ans)),
         "retrieval_mrr": round(sum(1 / r.hit_rank for r in ans if r.hit_rank) / len(ans), 3)
         if ans
         else None,
@@ -197,6 +203,9 @@ def main() -> None:
         help="minimum similarity (default depends on --search)",
     )
     p.add_argument("--sweep-min-score", type=float, nargs="*", help="try several thresholds")
+    p.add_argument(
+        "--baseline", action="store_true", help="also report what plain Ctrl+F would find"
+    )
     p.add_argument("--out", help="write full JSON results here")
     args = p.parse_args()
 
@@ -223,6 +232,15 @@ def main() -> None:
         )
         _print_summary(summary)
         all_summaries.append(summary)
+
+    if args.baseline:
+        from rag_assistant.baselines import evaluate_ctrl_f
+
+        print("\nCtrl+F baseline (exact words, retrieval only):")
+        for mode in ("all", "rarest"):
+            result = evaluate_ctrl_f(args.docs, load_questions(args.questions), mode)
+            print(f"  {result}")
+            all_summaries.append({"baseline": result})
 
     print("\nProblems (last configuration):")
     for r in last_results:

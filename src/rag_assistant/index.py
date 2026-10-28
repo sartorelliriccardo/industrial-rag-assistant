@@ -22,6 +22,11 @@ class VectorIndex:
     def doc_names(self) -> list[str]:
         return sorted({c.doc_name for c in self._chunks})
 
+    @property
+    def chunks(self) -> tuple[Chunk, ...]:
+        """Every indexed chunk, in insertion order (read-only view)."""
+        return tuple(self._chunks)
+
     def add(self, chunks: list[Chunk], vectors: np.ndarray) -> None:
         if len(chunks) != len(vectors):
             raise ValueError("chunks and vectors must have the same length")

@@ -87,14 +87,25 @@ class LexicalEmbedder:
     def __init__(self, dim: int = 4096):
         self.dim = dim
 
+    def describe(self, text: str) -> list[tuple[str, int, float]]:
+        """For each content word of `text`: (word as stemmed, vector position, weight).
+
+        This is exactly what `embed` puts into the vector; the step-by-step view uses it
+        to show which position each word ends up in.
+        """
+        counts: dict[str, int] = {}
+        for token in content_tokens(text):
+            counts[token] = counts.get(token, 0) + 1
+        return [
+            (token, zlib.crc32(token.encode("utf-8")) % self.dim, 1 + math.log(count))
+            for token, count in counts.items()
+        ]
+
     def embed(self, texts: list[str]) -> np.ndarray:
         vectors = np.zeros((len(texts), self.dim), dtype=np.float32)
         for row, text in enumerate(texts):
-            counts: dict[str, int] = {}
-            for token in content_tokens(text):
-                counts[token] = counts.get(token, 0) + 1
-            for token, count in counts.items():
-                vectors[row, zlib.crc32(token.encode("utf-8")) % self.dim] += 1 + math.log(count)
+            for _, position, weight in self.describe(text):
+                vectors[row, position] += weight
         return _normalize(vectors)
 
 

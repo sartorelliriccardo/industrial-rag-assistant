@@ -19,9 +19,9 @@ A general-purpose LLM asked "what is the tightening torque of the impeller nut?"
 - Retrieved passages with similarity scores are always shown, so the user can check the evidence.
 - **Page preview**: the cited PDF page is rendered with the passage used highlighted, so a citation can be checked at a glance.
 - Answers containing technical values (torque, pressure, temperature...) carry a reminder to verify them on the cited page.
-- Four tabs: **Assistant**, **How it works** (plain-language explanation), **Architecture** (two-flow diagram, modules, technologies, design decisions) and **Evaluation** (live view of `eval/results_*.json`, including the observed errors).
+- Five tabs: **Assistant**, **How it works** (plain-language explanation), **Step by step** (follow one of your questions through all nine stages with the real data of each: the words kept, the chunks, where each word lands in the vector, the ranking and threshold, the injected sentences removed, the exact prompt, the engine's raw output and the citation check), **Architecture** (two-flow diagram, modules, technologies, design decisions) and **Evaluation** (live view of `eval/results_*.json`, including the observed errors).
 - Two interchangeable answer engines: an **offline extractive engine** (no API key) and **Claude** via the Anthropic API.
-- 210 automated tests that run with no network and no API key, plus a repeatable evaluation.
+- 286 automated tests that run with no network and no API key, plus a repeatable evaluation.
 
 ## Quick start
 
@@ -59,10 +59,11 @@ The Claude engine is implemented and unit-tested against a fake provider, but **
 ### Tests, lint, evaluation
 
 ```bash
-pytest                         # 210 tests, offline, no API key
+pytest                         # 286 tests, offline, no API key
 ruff check . && ruff format --check .
 python -m rag_assistant.evaluation --search keyword  --out eval/results_keyword.json
 python -m rag_assistant.evaluation --search semantic --out eval/results_semantic.json   # needs the model
+python -m rag_assistant.evaluation --questions eval/hard_questions.jsonl --baseline   # hard set + Ctrl+F
 python scripts/make_sample_pdfs.py                            # regenerate the sample PDFs
 ```
 
@@ -103,6 +104,7 @@ flowchart LR
 | `pipeline.py` | Facade used by the UI and the evaluation |
 | `i18n.py`, `i18n_content.py` | Italian / English interface strings (a test checks both languages have the same keys) |
 | `preview.py` | Renders a cited PDF page with the used sentences highlighted |
+| `walkthrough.py` | Runs one question through the real pipeline and records what each stage produced (feeds the "Step by step" tab; reuses the same functions as `ask`, so nothing is re-implemented) |
 | `workspace.py` | Per-session store of the uploaded PDFs and the search index; discards a session's data shortly after it disconnects |
 | `session.py` | Idle expiry and optional-password helpers (UI-independent, unit-tested) |
 | `evaluation.py` | Repeatable evaluation with four separate metrics |
@@ -158,6 +160,28 @@ For maintenance documentation a wrong answer is worse than a refusal, which is w
 - The conflict and injection questions behave as intended: both conflicting values are reported with their citations, and the injected "100 bar" never reaches the answer.
 - A bug found by the evaluation and fixed: the first version dropped a whole passage when it contained one injected sentence, which also discarded legitimate facts next to it (fire assembly point, emergency number). Only the suspicious sentences are removed now.
 - A weakness found by looking at errors: the offline engine missed word forms ("lubricated" vs "Lubricate"). Sharing one crude stemmer between search and engine, and treating "often" as a question word, raised answer correctness. Those two changes were made after seeing these very errors, so the benchmark is no longer an independent test of them.
+
+### Hard questions and the Ctrl+F baseline
+
+The 43 questions above reward finding a sentence, which plain text search also does. To check what the assistant adds, `eval/hard_questions.jsonl` has 18 questions (16 answerable, 2 not) that need more than that: paraphrase, combining several pages or documents, diagnosing from symptoms, comparing, listing, judging a number against a limit, and asking in one language about a manual in another. Each lists the facts a correct answer must contain (groups of acceptable alternatives) and every page it needs.
+
+`python -m rag_assistant.evaluation --questions eval/hard_questions.jsonl --baseline` also simulates Ctrl+F (`baselines.py`): "whole question" = pages containing every content word of the question typed exactly; "rarest word" = a person who types only the most distinctive word that exists in the documents (generous: it assumes they already know which word works).
+
+| | Ctrl+F, whole question | Ctrl+F, rarest word | Assistant, keyword | Assistant, semantic |
+|---|---|---|---|---|
+| Finds **all** pages the answer needs | 0/16 | 11/16 (1.2 pages to read) | 13/16 (5 passages shown) | 13/16 |
+| Answer **correct** (offline engine) | - | - | 1/16 | 1/16 |
+| Refused although the answer is in the documents | - | - | 12/16 | 12/16 |
+| Unanswerable questions correctly refused | - | - | 1/2 | 1/2 |
+
+What this shows, for the offline extractive engine:
+
+- **Finding the right pages is not the problem; answering is.** The pages are found in 13 of 16 cases, yet only the control question (which a plain search also answers) is answered correctly. This is expected: the engine can only copy one sentence, so it cannot combine pages, judge a number (5 mm/s against a 4.5 mm/s limit), list tasks, compare two machines or translate.
+- **The retrieval advantage over a careful Ctrl+F is small** (13 vs 11 of 16, and the corpus is 11 pages, so 5 passages are almost half of it).
+- **Two answers are confidently wrong or off target:** "Can the P-200 pump water at 95 degC?" got the sentence "single-stage centrifugal pump for process water", and the question about the *available* NPSH got the *required* NPSH. A generative model must not make this kind of mistake worse.
+- This set is the bar to beat when a generative (local) model is added: the same questions, the same scoring.
+
+How much to trust this: 16 answerable questions written by the author over invented documents; scoring is by keyword groups and is stricter than a human reader (e.g. quoting the 4.5 mm/s limit without saying "not acceptable" counts as incorrect). The keyword and semantic columns match by coincidence in these totals; the retrieved pages differ per question.
 
 ## Limitations (please read)
 

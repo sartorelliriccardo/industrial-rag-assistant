@@ -98,7 +98,16 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 **Colloquio.** *Quanto è affidabile?* → "Su un benchmark piccolo e sintetico: ricerca hit@1 97%, risposte corrette 89%, rifiuti corretti 88% (con la ricerca per parole chiave; le domande le ho scritte io riusando parole dei manuali, quindi il confronto con la ricerca semantica non è equo). Non lo considero provato su documenti reali; ecco i limiti e gli errori osservati."
 
 ## 9. `app/streamlit_app.py` — l'interfaccia
-Barra laterale: motore di risposta, parametri, upload dei PDF, pulsante per i manuali di esempio. La pipeline vive in `st.session_state` (Streamlit rilancia lo script a ogni interazione, quindi lo stato va conservato); il modello di embedding è in `st.cache_resource` (si carica una volta sola). Gli errori dei PDF e delle chiamate API sono mostrati senza far crollare la pagina.
+Barra laterale: lingua, metodo di ricerca, motore di risposta, parametri, conferma che i documenti non sono riservati, upload dei PDF, pulsante «Cancella ora». Streamlit rilancia lo script a ogni interazione, quindi i dati dell'utente non stanno nelle variabili dello script ma in un archivio per sessione (`workspace.py`), che li elimina pochi secondi dopo la chiusura della pagina. Il modello neurale (se scelto) sta in `st.cache_resource` e si carica una volta sola. Gli errori dei PDF e delle chiamate API sono mostrati senza far crollare la pagina.
+
+**Le cinque schede, e come usarle per spiegare il progetto.**
+- *Assistente*: la domanda e la risposta con fonti, anteprima della pagina e passaggi.
+- *Come funziona*: la spiegazione in parole semplici, per chi non è tecnico.
+- *Passo per passo*: la scheda da usare in un colloquio. Scrivi una domanda e per ognuna delle nove fasi vedi i dati veri: le parole tenute (stemming), i pezzi, dove cade ogni parola nel vettore, la classifica con la soglia, le frasi nascoste rimosse, il prompt esatto, l'uscita grezza del motore e il controllo delle citazioni. Con il PDF che contiene la frase «ignore all previous instructions» si vede il filtro in azione.
+- *Architettura*: i due flussi, i moduli e le scelte.
+- *Valutazione*: i numeri e gli errori, compresi i limiti.
+
+**Colloquio.** *Mostrami come funziona.* → apri «Passo per passo» con una domanda e racconta le nove fasi seguendo lo schermo: è la dimostrazione che il sistema non è una scatola nera e che ogni numero può essere verificato.
 
 ---
 

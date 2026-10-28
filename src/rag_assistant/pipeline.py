@@ -12,7 +12,7 @@ from rag_assistant.embeddings import Embedder
 from rag_assistant.generation import generate_answer
 from rag_assistant.index import VectorIndex
 from rag_assistant.llm import LLMProvider
-from rag_assistant.models import Answer, RetrievedChunk
+from rag_assistant.models import Answer, Chunk, RetrievedChunk
 from rag_assistant.pdf_loader import load_pdf_bytes
 from rag_assistant.retrieval import retrieve
 
@@ -39,6 +39,10 @@ class RagPipeline:
     @property
     def documents(self) -> list[str]:
         return self._index.doc_names if self._index else []
+
+    @property
+    def chunks(self) -> tuple[Chunk, ...]:
+        return self._index.chunks if self._index else ()
 
     @property
     def chunk_count(self) -> int:

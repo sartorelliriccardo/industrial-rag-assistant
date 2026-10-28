@@ -49,3 +49,5 @@ class Answer:
     evidence: list[RetrievedChunk] = field(default_factory=list)  # passages given to the LLM
     flagged: list[RetrievedChunk] = field(default_factory=list)  # excluded: look like injection
     invalid_citations: list[str] = field(default_factory=list)  # ids cited but never provided
+    raw: str = ""  # what the answer engine returned, before citations were rendered
+    engine_called: bool = False  # False when no passage was good enough to ask the engine

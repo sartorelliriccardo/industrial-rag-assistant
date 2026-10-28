@@ -1,0 +1,507 @@
+{
+  "summaries": [
+    {
+      "n_questions": 18,
+      "n_answerable": 16,
+      "n_unanswerable": 2,
+      "retrieval_hit_at_1": 0.688,
+      "retrieval_hit_at_3": 0.812,
+      "retrieval_hit_at_k": 0.938,
+      "retrieval_all_gold_pages": 0.812,
+      "retrieval_mrr": 0.768,
+      "answer_correct": 0.062,
+      "citation_hit": 1.0,
+      "citation_precision": 1.0,
+      "abstention_correct": 0.5,
+      "false_abstention": 0.75,
+      "config": {
+        "search": "LexicalEmbedder",
+        "provider": "extractive",
+        "chunk_size": 400,
+        "chunk_overlap": 80,
+        "top_k": 5,
+        "min_score": 0.1,
+        "n_chunks": 11
+      }
+    },
+    {
+      "baseline": {
+        "mode": "all",
+        "n_answerable": 16,
+        "all_gold_found": 0.0,
+        "usable": 0.0,
+        "avg_pages_to_read": 0.0,
+        "n_pages_in_corpus": 11
+      }
+    },
+    {
+      "baseline": {
+        "mode": "rarest",
+        "n_answerable": 16,
+        "all_gold_found": 0.688,
+        "usable": 0.688,
+        "avg_pages_to_read": 1.2,
+        "n_pages_in_corpus": 11
+      }
+    }
+  ],
+  "results": [
+    {
+      "id": "h01",
+      "category": "paraphrase",
+      "question": "How do I make sure nobody can start the machine while I am working on it?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "plant_safety_procedures.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "compressore_C50_manuale.pdf#p3",
+        "plant_safety_procedures.pdf#p2",
+        "compressore_C50_manuale.pdf#p2"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h02",
+      "category": "synthesis",
+      "question": "What do I need to do and wear before replacing the mechanical seal of the P-200?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "plant_safety_procedures.pdf#p1",
+        "pump_P200_manual.pdf#p4"
+      ],
+      "hit_rank": 4,
+      "gold_recall": 0.5,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h03",
+      "category": "diagnosis",
+      "question": "The P-200 is noisy and the bearing temperature is above 80 degC: what could be the causes?",
+      "answerable": true,
+      "status": "answered",
+      "answer": "Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. [pump_P200_manual.pdf, p. 4]",
+      "cited": [
+        "pump_P200_manual.pdf#p4"
+      ],
+      "retrieved": [
+        "pump_P200_manual.pdf#p4",
+        "pump_P200_manual.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p3"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": true,
+      "citation_precision": 1.0,
+      "abstained": false,
+      "problems": [
+        "missing expected keyword(s)"
+      ]
+    },
+    {
+      "id": "h04",
+      "category": "diagnosis",
+      "question": "Il compressore C-50 si e arrestato da solo: cosa devo controllare?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "compressore_C50_manuale.pdf#p1",
+        "compressore_C50_manuale.pdf#p3",
+        "plant_safety_procedures.pdf#p2",
+        "plant_safety_procedures.pdf#p1",
+        "compressore_C50_manuale.pdf#p2"
+      ],
+      "hit_rank": 2,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h05",
+      "category": "comparison",
+      "question": "Which needs lubrication or oil service more often, the P-200 or the C-50?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "pump_P200_datasheet_revA.pdf#p1",
+        "pump_P200_manual.pdf#p4",
+        "pump_P200_manual.pdf#p1",
+        "compressore_C50_manuale.pdf#p1",
+        "pump_P200_manual.pdf#p2"
+      ],
+      "hit_rank": 5,
+      "gold_recall": 0.5,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h06",
+      "category": "crosslang",
+      "question": "Qual e la coppia di serraggio del dado della girante del P-200?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "compressore_C50_manuale.pdf#p3",
+        "pump_P200_manual.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "pump_P200_manual.pdf#p4",
+        "plant_safety_procedures.pdf#p2"
+      ],
+      "hit_rank": null,
+      "gold_recall": 0.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "retrieval miss: no gold page in top-k",
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h07",
+      "category": "crosslang",
+      "question": "What is the maximum working pressure of the C-50 compressor?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "compressore_C50_manuale.pdf#p1",
+        "pump_P200_manual.pdf#p1",
+        "plant_safety_procedures.pdf#p3",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "compressore_C50_manuale.pdf#p3"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h08",
+      "category": "list",
+      "question": "Elenca le operazioni di manutenzione periodica del compressore C-50 con la frequenza.",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "compressore_C50_manuale.pdf#p1",
+        "compressore_C50_manuale.pdf#p3",
+        "compressore_C50_manuale.pdf#p2",
+        "plant_safety_procedures.pdf#p2",
+        "plant_safety_procedures.pdf#p1"
+      ],
+      "hit_rank": 3,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h09",
+      "category": "list",
+      "question": "List the routine maintenance tasks of the P-200 and how often each is done.",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p1",
+        "plant_safety_procedures.pdf#p1",
+        "pump_P200_manual.pdf#p4",
+        "plant_safety_procedures.pdf#p3"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h10",
+      "category": "reasoning",
+      "question": "Do I need hearing protection when working next to the C-50 compressor?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "compressore_C50_manuale.pdf#p1",
+        "plant_safety_procedures.pdf#p2",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "compressore_C50_manuale.pdf#p3",
+        "pump_P200_manual.pdf#p4"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h11",
+      "category": "reasoning",
+      "question": "The vibration at the bearing housing is 5 mm/s. Is that acceptable?",
+      "answerable": true,
+      "status": "answered",
+      "answer": "The vibration limit measured at the bearing housing is 4.5 mm/s RMS. [pump_P200_manual.pdf, p. 2]",
+      "cited": [
+        "pump_P200_manual.pdf#p2"
+      ],
+      "retrieved": [
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p4",
+        "compressore_C50_manuale.pdf#p1",
+        "plant_safety_procedures.pdf#p3",
+        "pump_P200_datasheet_revA.pdf#p1"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": true,
+      "citation_precision": 1.0,
+      "abstained": false,
+      "problems": [
+        "missing expected keyword(s)"
+      ]
+    },
+    {
+      "id": "h12",
+      "category": "reasoning",
+      "question": "The mechanical seal leaks 12 drops per minute. What should I do?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "plant_safety_procedures.pdf#p2",
+        "plant_safety_procedures.pdf#p1"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h13",
+      "category": "reasoning",
+      "question": "Can the P-200 pump water at 95 degC?",
+      "answerable": true,
+      "status": "answered",
+      "answer": "The P-200 is a single-stage centrifugal pump for process water. [pump_P200_manual.pdf, p. 1]",
+      "cited": [
+        "pump_P200_manual.pdf#p1"
+      ],
+      "retrieved": [
+        "pump_P200_manual.pdf#p1",
+        "pump_P200_manual.pdf#p4",
+        "pump_P200_datasheet_revA.pdf#p1",
+        "plant_safety_procedures.pdf#p2",
+        "plant_safety_procedures.pdf#p3"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": true,
+      "citation_precision": 1.0,
+      "abstained": false,
+      "problems": [
+        "missing expected keyword(s)"
+      ]
+    },
+    {
+      "id": "h14",
+      "category": "paraphrase",
+      "question": "Ogni quante ore cambio l'olio del compressore e che tipo uso?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "compressore_C50_manuale.pdf#p2",
+        "compressore_C50_manuale.pdf#p3",
+        "compressore_C50_manuale.pdf#p1",
+        "plant_safety_procedures.pdf#p2",
+        "plant_safety_procedures.pdf#p1"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h15",
+      "category": "list",
+      "question": "Cosa devo fare se compaiono gli allarmi E02 ed E03?",
+      "answerable": true,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "compressore_C50_manuale.pdf#p3",
+        "compressore_C50_manuale.pdf#p1",
+        "plant_safety_procedures.pdf#p2",
+        "plant_safety_procedures.pdf#p1",
+        "compressore_C50_manuale.pdf#p2"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
+    },
+    {
+      "id": "h16",
+      "category": "control",
+      "question": "What is required to enter a confined space?",
+      "answerable": true,
+      "status": "answered",
+      "answer": "Entering a confined space requires a permit signed by the shift supervisor. [plant_safety_procedures.pdf, p. 2]",
+      "cited": [
+        "plant_safety_procedures.pdf#p2"
+      ],
+      "retrieved": [
+        "plant_safety_procedures.pdf#p2",
+        "pump_P200_manual.pdf#p4",
+        "plant_safety_procedures.pdf#p1",
+        "compressore_C50_manuale.pdf#p3",
+        "compressore_C50_manuale.pdf#p2"
+      ],
+      "hit_rank": 1,
+      "gold_recall": 1.0,
+      "correct": true,
+      "citation_hit": true,
+      "citation_precision": 1.0,
+      "abstained": false,
+      "problems": []
+    },
+    {
+      "id": "h17",
+      "category": "unanswerable",
+      "question": "How many operating hours before the C-50 compressor motor must be replaced?",
+      "answerable": false,
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
+      "retrieved": [
+        "pump_P200_datasheet_revA.pdf#p1",
+        "pump_P200_manual.pdf#p2",
+        "compressore_C50_manuale.pdf#p1",
+        "pump_P200_manual.pdf#p1",
+        "plant_safety_procedures.pdf#p2"
+      ],
+      "hit_rank": null,
+      "gold_recall": null,
+      "correct": null,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": []
+    },
+    {
+      "id": "h18",
+      "category": "unanswerable",
+      "question": "What is the available NPSH at the plant where the P-200 is installed?",
+      "answerable": false,
+      "status": "answered",
+      "answer": "Cavitation noise: the available NPSH is too low, the required NPSH of the P-200 is 3.5 m. [pump_P200_manual.pdf, p. 4]",
+      "cited": [
+        "pump_P200_manual.pdf#p4"
+      ],
+      "retrieved": [
+        "pump_P200_manual.pdf#p4",
+        "pump_P200_manual.pdf#p1",
+        "compressore_C50_manuale.pdf#p1",
+        "plant_safety_procedures.pdf#p1",
+        "pump_P200_datasheet_revA.pdf#p1"
+      ],
+      "hit_rank": null,
+      "gold_recall": null,
+      "correct": null,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": false,
+      "problems": [
+        "answered a question that has no answer in the documents"
+      ]
+    }
+  ]
+}
