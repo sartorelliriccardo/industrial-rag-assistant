@@ -29,5 +29,23 @@ def test_unknown_language_falls_back_to_english():
     assert t("xx", "remove") == t("en", "remove")
 
 
+def test_example_questions_and_problem_texts_have_translations():
+    from rag_assistant.i18n import EXAMPLE_QUESTIONS, PROBLEM_KEYS
+
+    for lang in LANGUAGES:
+        for key in [*EXAMPLE_QUESTIONS, *PROBLEM_KEYS.values()]:
+            assert key in STRINGS[lang], f"{lang}: missing {key}"
+
+
+def test_every_problem_the_evaluation_can_report_is_mapped():
+    from pathlib import Path
+
+    from rag_assistant.i18n import PROBLEM_KEYS
+
+    source = (Path(__file__).parent.parent / "src/rag_assistant/evaluation.py").read_text("utf-8")
+    for problem in PROBLEM_KEYS:
+        assert problem in source, f"{problem!r} is not an evaluation message any more"
+
+
 def test_default_language_is_supported():
     assert DEFAULT_LANGUAGE in LANGUAGES

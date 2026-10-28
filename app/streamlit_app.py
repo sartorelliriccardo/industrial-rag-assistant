@@ -1,5 +1,6 @@
 """Streamlit UI (Italian / English): upload PDFs, ask questions, inspect the evidence."""
 
+import json
 import sys
 from pathlib import Path
 
@@ -13,7 +14,14 @@ import streamlit as st
 
 from rag_assistant.config import DEFAULT_MIN_SCORE, DEFAULT_TOP_K, get_chunk_settings
 from rag_assistant.embeddings import FastEmbedEmbedder
-from rag_assistant.i18n import DEFAULT_LANGUAGE, LANGUAGES, t
+from rag_assistant.generation import has_critical_values
+from rag_assistant.i18n import (
+    DEFAULT_LANGUAGE,
+    EXAMPLE_QUESTIONS,
+    LANGUAGES,
+    PROBLEM_KEYS,
+    t,
+)
 from rag_assistant.llm import get_provider
 from rag_assistant.pdf_loader import (
     PdfCorruptedError,
@@ -22,8 +30,11 @@ from rag_assistant.pdf_loader import (
     PdfNotFoundError,
 )
 from rag_assistant.pipeline import RagPipeline
+from rag_assistant.preview import render_cited_page, select_sentences
 
 SAMPLE_DIR = ROOT / "data" / "sample_pdfs"
+RESULTS_PATH = ROOT / "eval" / "results.json"
+MAX_PREVIEWS = 3
 
 st.set_page_config(page_title="Industrial RAG Assistant", page_icon="🏭", layout="wide")
 
@@ -47,7 +58,7 @@ def new_pipeline(provider_name: str, api_key: str | None) -> RagPipeline:
     )
 
 
-def pdf_error_message(exc: PdfError, name: str) -> str:
+def pdf_error_message(lang: str, exc: PdfError, name: str) -> str:
     if isinstance(exc, PdfNoTextError):
         key = "err_no_text"
     elif isinstance(exc, PdfCorruptedError):
@@ -121,7 +132,7 @@ def add_file(name: str, data: bytes) -> None:
         files[name] = data
         st.sidebar.success(t(lang, "indexed", name=name, n=n))
     except PdfError as exc:
-        st.sidebar.error(pdf_error_message(exc, name))
+        st.sidebar.error(pdf_error_message(lang, exc, name))
 
 
 if pipeline:
@@ -134,30 +145,46 @@ if pipeline:
             if pdf.name not in files:
                 add_file(pdf.name, pdf.read_bytes())
 
-# ---------------------------------------------------------------- main
-st.title(f"🏭 {t(lang, 'title')}")
-st.caption(t(lang, "subtitle"))
 
-if pipeline is None:
-    st.info(t(lang, "need_key"))
-    st.stop()
+# ---------------------------------------------------------------- tabs
+def set_question(text: str) -> None:
+    st.session_state.question = text
 
-if not files:
-    st.info(t(lang, "start_hint"))
-    st.stop()
 
-with st.expander(t(lang, "indexed_docs", n=len(files), chunks=pipeline.chunk_count)):
-    for name in list(files):
-        col1, col2 = st.columns([6, 1])
-        col1.write(f"📄 {name}")
-        if col2.button(t(lang, "remove"), key=f"rm_{name}"):
-            pipeline.remove(name)
-            del files[name]
-            st.rerun()
+def render_assistant() -> None:
+    if pipeline is None:
+        st.info(t(lang, "need_key"))
+        return
+    if not files:
+        st.info(t(lang, "start_hint"))
+        return
 
-question = st.text_input(t(lang, "question"), placeholder=t(lang, "placeholder"), key="question")
+    with st.expander(t(lang, "indexed_docs", n=len(files), chunks=pipeline.chunk_count)):
+        for name in list(files):
+            col1, col2 = st.columns([6, 1])
+            col1.write(f"📄 {name}")
+            if col2.button(t(lang, "remove"), key=f"rm_{name}"):
+                pipeline.remove(name)
+                del files[name]
+                st.rerun()
 
-if question:
+    st.caption(t(lang, "examples_title"))
+    columns = st.columns(len(EXAMPLE_QUESTIONS))
+    for column, (key, example) in zip(columns, EXAMPLE_QUESTIONS.items(), strict=True):
+        column.button(
+            t(lang, key),
+            key=f"btn_{key}",
+            on_click=set_question,
+            args=(example,),
+            use_container_width=True,
+        )
+
+    question = st.text_input(
+        t(lang, "question"), placeholder=t(lang, "placeholder"), key="question"
+    )
+    if not question:
+        return
+
     pipeline.top_k = st.session_state.get("top_k", DEFAULT_TOP_K)
     pipeline.min_score = st.session_state.get("min_score", DEFAULT_MIN_SCORE)
     try:
@@ -165,10 +192,12 @@ if question:
             answer = pipeline.ask(question)
     except Exception as exc:  # network/API errors must not crash the page
         st.error(t(lang, "answer_error", error=exc))
-        st.stop()
+        return
 
     if answer.status == "answered":
         st.success(answer.text)
+        if has_critical_values(answer.text):
+            st.warning(t(lang, "verify_values"), icon="⚠️")
     elif answer.status == "insufficient":
         st.warning(t(lang, "insufficient"))
     else:
@@ -178,6 +207,7 @@ if question:
         st.subheader(t(lang, "sources"))
         for c in answer.citations:
             st.markdown("- " + t(lang, "source_line", doc=c.doc_name, page=c.page_number))
+        render_previews(answer)
     if answer.invalid_citations:
         st.error(t(lang, "invalid_citations", ids=", ".join(answer.invalid_citations)))
     if answer.flagged:
@@ -203,3 +233,120 @@ if question:
         )
         with st.expander(title):
             st.write(r.chunk.text)
+
+
+def render_previews(answer) -> None:
+    """Show the cited PDF pages with the used passage highlighted."""
+    st.subheader(t(lang, "preview_title"))
+    for position, c in enumerate(answer.citations[:MAX_PREVIEWS]):
+        evidence = answer.evidence[int(c.source_id[1:]) - 1]
+        pdf_bytes = files.get(c.doc_name)
+        if pdf_bytes is None:
+            continue
+        try:
+            used_text = select_sentences(evidence.chunk.text, answer.text)
+            png, highlighted = render_cited_page(pdf_bytes, c.page_number, used_text)
+        except Exception as exc:
+            st.error(t(lang, "preview_error", error=exc))
+            continue
+        caption_key = "preview_caption" if highlighted else "preview_no_highlight"
+        with st.expander(c.label, expanded=position == 0):
+            st.image(png, caption=t(lang, caption_key, doc=c.doc_name, page=c.page_number))
+
+
+def flow_diagram() -> str:
+    def label(key: str) -> str:
+        return t(lang, key).replace('"', "'")
+
+    return f"""
+    digraph {{
+      rankdir=LR; bgcolor="transparent";
+      node [shape=box, style="rounded,filled", fillcolor="#374151", fontcolor="white",
+            color="#6b7280", fontname="Helvetica"];
+      edge [color="#9ca3af", fontcolor="#9ca3af", fontname="Helvetica"];
+      pdf [label="{label("flow_pdf")}"]; chunks [label="{label("flow_chunks")}"];
+      vectors [label="{label("flow_vectors")}"]; index [label="{label("flow_index")}"];
+      question [label="{label("flow_question")}"]; retrieval [label="{label("flow_retrieval")}"];
+      check [label="{label("flow_check")}", shape=diamond];
+      engine [label="{label("flow_engine")}"]; verify [label="{label("flow_verify")}"];
+      answer [label="{label("flow_answer")}", fillcolor="#166534"];
+      no [label="{label("flow_no")}", fillcolor="#92400e"];
+      pdf -> chunks -> vectors -> index; question -> retrieval; index -> retrieval [style=dashed];
+      retrieval -> check; check -> engine [label="✓"]; check -> no [label="✗"];
+      engine -> verify -> answer;
+    }}
+    """
+
+
+def render_about() -> None:
+    st.markdown(t(lang, "about_md"))
+    st.graphviz_chart(flow_diagram())
+
+
+def render_evaluation() -> None:
+    st.subheader(t(lang, "eval_title"))
+    if not RESULTS_PATH.exists():
+        st.info(t(lang, "eval_missing"))
+        return
+    data = json.loads(RESULTS_PATH.read_text(encoding="utf-8"))
+    summary, results = data["summaries"][-1], data["results"]
+    cfg = summary["config"]
+    st.caption(
+        t(
+            lang,
+            "eval_intro",
+            n=summary["n_questions"],
+            n_ans=summary["n_answerable"],
+            n_unans=summary["n_unanswerable"],
+            size=cfg["chunk_size"],
+            overlap=cfg["chunk_overlap"],
+            k=cfg["top_k"],
+            min_score=cfg["min_score"],
+        )
+    )
+    metrics = [
+        ("m_hit1", "retrieval_hit_at_1"),
+        ("m_hit3", "retrieval_hit_at_3"),
+        ("m_mrr", "retrieval_mrr"),
+        ("m_correct", "answer_correct"),
+        ("m_cit_hit", "citation_hit"),
+        ("m_cit_prec", "citation_precision"),
+        ("m_abst", "abstention_correct"),
+        ("m_false_abst", "false_abstention"),
+    ]
+    columns = st.columns(4)
+    for i, (label_key, field) in enumerate(metrics):
+        value = summary.get(field)
+        columns[i % 4].metric(t(lang, label_key), "-" if value is None else f"{value:.0%}")
+    st.warning(t(lang, "eval_limits_md"))
+
+    st.subheader(t(lang, "eval_problems"))
+    rows = [
+        {
+            t(lang, "col_id"): r["id"],
+            t(lang, "col_category"): r["category"],
+            t(lang, "col_question"): r["question"],
+            t(lang, "col_problem"): (t(lang, PROBLEM_KEYS[p]) if p in PROBLEM_KEYS else p),
+        }
+        for r in results
+        for p in r["problems"]
+    ]
+    if rows:
+        st.dataframe(rows, hide_index=True, use_container_width=True)
+    else:
+        st.success(t(lang, "eval_no_problems"))
+
+
+# ---------------------------------------------------------------- main
+st.title(f"🏭 {t(lang, 'title')}")
+st.caption(t(lang, "subtitle"))
+
+tab_assistant, tab_about, tab_eval = st.tabs(
+    [t(lang, "tab_assistant"), t(lang, "tab_about"), t(lang, "tab_eval")]
+)
+with tab_assistant:
+    render_assistant()
+with tab_about:
+    render_about()
+with tab_eval:
+    render_evaluation()

@@ -1,5 +1,7 @@
 """UI strings in Italian and English. Add a language by adding a dict with the same keys."""
 
+from rag_assistant.i18n_content import CONTENT, EXAMPLE_QUESTIONS, PROBLEM_KEYS  # noqa: F401
+
 LANGUAGES = {"it": "Italiano", "en": "English"}
 DEFAULT_LANGUAGE = "it"
 
@@ -124,6 +126,10 @@ STRINGS: dict[str, dict[str, str]] = {
         "passage_title": "#{rank} · {doc}, p. {page} · punteggio {score:.2f} · {tag}",
     },
 }
+
+
+for _lang, _extra in CONTENT.items():
+    STRINGS[_lang].update(_extra)
 
 
 def t(lang: str, key: str, **kwargs) -> str:

@@ -17,8 +17,12 @@ A general-purpose LLM asked "what is the tightening torque of the impeller nut?"
 - Explicit "not enough information" answers, from a similarity threshold plus the answering engine.
 - Defences against prompt injection hidden in PDFs and conflict reporting between documents.
 - Retrieved passages with similarity scores are always shown, so the user can check the evidence.
+- **Page preview**: the cited PDF page is rendered with the passage used highlighted, so a citation can be checked at a glance.
+- Answers containing technical values (torque, pressure, temperature...) carry a reminder to verify them on the cited page.
+- One-click example questions (normal, Italian manual, conflicting documents, hidden instruction, no answer) and a built-in set of synthetic sample manuals, so the app can be tried without uploading anything.
+- Three tabs: **Assistant**, **How it works** (explanation and flow diagram) and **Evaluation** (live view of `eval/results.json`, including the observed errors).
 - Two interchangeable answer engines: an **offline extractive engine** (no API key) and **Claude** via the Anthropic API.
-- 96 automated tests that run with no network and no API key, plus a repeatable evaluation.
+- 167 automated tests that run with no network and no API key, plus a repeatable evaluation.
 
 ## Quick start
 
@@ -56,7 +60,7 @@ The Claude engine is implemented and unit-tested against a fake provider, but **
 ### Tests, lint, evaluation
 
 ```bash
-pytest                         # 96 tests, offline, no API key
+pytest                         # 167 tests, offline, no API key
 ruff check . && ruff format --check .
 python -m rag_assistant.evaluation --out eval/results.json    # needs the embedding model
 python scripts/make_sample_pdfs.py                            # regenerate the sample PDFs
@@ -96,7 +100,8 @@ flowchart LR
 | `llm.py` | `LLMProvider` protocol; `AnthropicProvider`, `ExtractiveProvider` |
 | `generation.py` | Evidence selection, prompt building, citation verification |
 | `pipeline.py` | Facade used by the UI and the evaluation |
-| `i18n.py` | Italian / English interface strings (a test checks both languages have the same keys) |
+| `i18n.py`, `i18n_content.py` | Italian / English interface strings (a test checks both languages have the same keys) |
+| `preview.py` | Renders a cited PDF page with the used sentences highlighted |
 | `evaluation.py` | Repeatable evaluation with four separate metrics |
 
 ## Design decisions

@@ -38,4 +38,4 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.ruff.lint.per-file-ignores]
 "app/streamlit_app.py" = ["E402"]  # sys.path fallback must run before the imports
-"src/rag_assistant/i18n.py" = ["E501"]  # translation strings read better on one line
+"src/rag_assistant/i18n*.py" = ["E501"]  # translation strings read better on one line

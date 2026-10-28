@@ -1,5 +1,6 @@
 """Evidence -> grounded prompt -> LLM -> answer with verified citations."""
 
+import re
 from dataclasses import replace
 
 from rag_assistant.llm import LLMProvider
@@ -11,6 +12,19 @@ from rag_assistant.prompts import (
     escape_source_text,
     strip_injected_sentences,
 )
+
+CRITICAL_VALUE_RE = re.compile(
+    r"\d+(?:[.,]\d+)?\s*(?:N\.?m|bar|psi|kPa|MPa|°\s?C|degC|kW|rpm|mm/s|dB|V|A|kg)(?![A-Za-z])"
+)
+
+
+def has_critical_values(text: str) -> bool:
+    """True if the text contains a number with a technical unit (torque, pressure, ...).
+
+    Used to remind the reader to verify such values on the cited page.
+    """
+    return bool(CRITICAL_VALUE_RE.search(text))
+
 
 INSUFFICIENT_MESSAGE = (
     "The uploaded documents do not contain enough information to answer this question."
