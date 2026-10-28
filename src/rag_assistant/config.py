@@ -6,7 +6,9 @@ DEFAULT_CHUNK_SIZE = 400
 DEFAULT_CHUNK_OVERLAP = 80
 DEFAULT_TOP_K = 5
 # Minimum cosine similarity for a passage to count as evidence (tuned in eval, see README).
-DEFAULT_MIN_SCORE = 0.25
+DEFAULT_MIN_SCORE = 0.25  # semantic (neural) search
+# Cosine scores are not comparable across embedders: each has its own sensible threshold.
+MIN_SCORE_BY_SEARCH = {"semantic": 0.25, "keyword": 0.10}
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5"
 

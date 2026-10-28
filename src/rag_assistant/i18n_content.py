@@ -3,27 +3,15 @@
 Avoid curly braces in the markdown texts: they are format fields for `t(...)`.
 """
 
-# Example questions stay in the language of the sample manuals, whatever the UI language:
-# the offline engine cannot translate between the question and the document.
-EXAMPLE_QUESTIONS = {
-    "ex_normal": "What is the tightening torque of the impeller nut?",
-    "ex_italian": "Qual e la pressione massima di esercizio del compressore C-50?",
-    "ex_conflict": "What is the maximum operating pressure of the P-200 pump?",
-    "ex_injection": "What is the internal emergency number?",
-    "ex_noanswer": "What is the warranty period of the P-200?",
-}
-
 CONTENT: dict[str, dict[str, str]] = {
     "en": {
         "tab_assistant": "Assistant",
         "tab_about": "How it works",
         "tab_eval": "Evaluation",
-        "examples_title": "Try an example (uses the sample manuals)",
-        "ex_normal": "Normal question",
-        "ex_italian": "Italian manual",
-        "ex_conflict": "Documents disagree",
-        "ex_injection": "Hidden instruction in a PDF",
-        "ex_noanswer": "Answer not in the documents",
+        "search": "Search method",
+        "search_keyword": "By keywords (light, default)",
+        "search_semantic": "By meaning (neural model)",
+        "search_semantic_note": "Loads a ~120 MB model and needs about 400 MB more memory: it may not fit on a free public server. Best used locally.",
         "verify_values": "This answer contains technical values (torque, pressure, temperature...). Verify them on the cited page before acting.",
         "preview_title": "Page preview",
         "preview_caption": "{doc}, page {page}: the passage used is highlighted",
@@ -31,37 +19,34 @@ CONTENT: dict[str, dict[str, str]] = {
         "preview_error": "Could not render the preview: {error}",
         "about_md": """
 ### What it is
-Industrial RAG Assistant answers questions about technical manuals (PDF) and always shows **which document and page** each answer comes from. If the documents do not contain the answer, it says so instead of guessing.
+A tool that answers questions about your technical manuals (PDF) and **always shows where the answer comes from**: document and page. If the answer is not in the documents, it says so instead of making something up.
 
 ### How to use it
-1. Upload one or more PDFs in the sidebar, or load the sample manuals.
-2. Ask a question in Italian or English.
-3. Read the answer, then check the sources, the page preview and the retrieved passages.
+1. **Add documents.** Upload your PDF manuals in the left sidebar.
+2. **Ask a question** in Italian or English.
+3. **Check the answer.** Under it you see the source, the PDF page with the sentence highlighted, and the passages the assistant found.
 
-### How it works
-- **Reading:** the text of every page is extracted, keeping document name and page number.
-- **Chunks:** pages are split into small overlapping pieces that never cross a page, so citations are exact.
-- **Embeddings:** each piece becomes a vector that represents its meaning, also across Italian and English.
-- **Retrieval:** the question becomes a vector and the most similar pieces are found.
-- **Constrained answer:** the pieces are given to the answer engine with strict rules: answer only from them, cite the sources, say when the evidence is not enough.
-- **Verification:** the code checks every citation against the passages that were really provided.
+### What happens when you ask
+1. **It searches** the documents for the passages closest to your question.
+2. **It writes the answer** using only those passages.
+3. **It checks itself:** every source it names must be a passage it was really given.
+4. **It says "not enough information"** when nothing relevant is found.
 
-### Answer engines
-- **Offline (default):** quotes the sentences that best match the question. No API key, always grounded in the text, but it cannot rephrase and fails when the question uses different words than the manual.
-- **Claude (optional):** rewrites the answer from the passages, using your own API key (kept in memory only). It is implemented but **not yet evaluated** in this project.
+*Example:* you ask "What is the tightening torque of the impeller nut?" → it finds page 3 of the pump manual → it answers "120 N.m" → it shows you page 3 with that sentence highlighted.
 
-### Safety measures
-- Instructions hidden in a PDF (prompt injection) are removed from the evidence and flagged.
-- If documents disagree, both values are reported with their sources.
-- Answers with technical values remind you to verify them on the cited page.
+### Two ways to answer
+- **Offline (default):** copies the best-matching sentences from the manual. Free, no account needed.
+- **Claude (optional):** writes a more natural answer, using your own API key. Not tested yet in this project.
 
-### Limits
-- The evaluation is small and synthetic: it does not prove reliability on real manuals.
-- No OCR: scanned PDFs are rejected. Tables lose their structure.
-- Do not use it for safety-critical decisions without checking the cited page.
+### What it does not do
+- It cannot read scanned PDFs (no OCR).
+- It does not understand tables well.
+- It does not replace checking the page: always verify torques, pressures and temperatures on the cited page.
 
-### Privacy and code
-PDFs are processed in memory and never stored. Do not upload confidential documents to a public demo. Source code: github.com/sartorelliriccardo/industrial-rag-assistant
+### Privacy
+Your PDFs are used in memory only and are never saved. Do not upload confidential documents to a public demo.
+
+Technical details are in the **Architecture** tab, and how well it works is in the **Evaluation** tab.
 """,
         "tab_arch": "Architecture",
         "arch_title": "Architecture: how it works",
@@ -89,7 +74,7 @@ PDFs are processed in memory and never stored. Do not upload confidential docume
 |---|---|---|---|
 | Reading | `pdf_loader.py` | PyMuPDF | Extracts the text of each page keeping document name and page number; clear errors for empty, corrupted, protected or scanned PDFs |
 | Chunking | `chunking.py` | Python | Sliding window of 400 characters with 80 of overlap, cut on whitespace, never across a page |
-| Embeddings | `embeddings.py` | FastEmbed (ONNX), multilingual MiniLM quantised to 8 bit, 384 dimensions | Turns text into a vector of unit length that represents its meaning, in Italian and English |
+| Embeddings | `embeddings.py` | Default: stemmed keywords hashed into a vector (no model). Optional: FastEmbed (ONNX), multilingual MiniLM quantised to 8 bit | Turns text into a unit-length vector. Keyword mode matches shared words; the neural mode matches meaning, also across Italian and English |
 | Index | `index.py` | FAISS (exact inner-product index) | Stores the vectors; with unit vectors the inner product is the cosine similarity |
 | Retrieval | `retrieval.py` | - | Finds the top-k most similar passages with their score |
 | Generation | `generation.py`, `prompts.py` | - | Applies the score threshold, removes injected instructions, builds the constrained prompt and verifies the citations |
@@ -108,7 +93,7 @@ PDFs are processed in memory and never stored. Do not upload confidential docume
 - **Refuse rather than guess:** a low similarity score means the engine is never called.
 """,
         "eval_title": "How well does it work?",
-        "eval_intro": "Results of the repeatable evaluation (eval/questions.jsonl): {n} questions, {n_ans} with an answer in the documents and {n_unans} without. Offline engine, chunk {size}/{overlap}, top-{k}, minimum similarity {min_score}.",
+        "eval_intro": "Results of the repeatable evaluation (eval/questions.jsonl): {n} questions, {n_ans} with an answer in the documents and {n_unans} without. Search: {mode}. Offline answer engine, chunk {size}/{overlap}, top-{k}, minimum similarity {min_score}.",
         "eval_missing": "No evaluation results found. Run: python -m rag_assistant.evaluation --out eval/results.json",
         "m_hit1": "Right page ranked first",
         "m_hit3": "Right page in top 3",
@@ -138,12 +123,10 @@ PDFs are processed in memory and never stored. Do not upload confidential docume
         "tab_assistant": "Assistente",
         "tab_about": "Come funziona",
         "tab_eval": "Valutazione",
-        "examples_title": "Prova un esempio (usa i manuali di esempio)",
-        "ex_normal": "Domanda normale",
-        "ex_italian": "Manuale in italiano",
-        "ex_conflict": "I documenti sono in disaccordo",
-        "ex_injection": "Istruzione nascosta in un PDF",
-        "ex_noanswer": "Risposta non presente nei documenti",
+        "search": "Metodo di ricerca",
+        "search_keyword": "Per parole chiave (leggero, predefinito)",
+        "search_semantic": "Per significato (modello neurale)",
+        "search_semantic_note": "Carica un modello da ~120 MB e richiede circa 400 MB di memoria in più: su un server pubblico gratuito potrebbe non starci. Meglio usarlo in locale.",
         "verify_values": "Questa risposta contiene valori tecnici (coppie, pressioni, temperature...). Verificali sulla pagina citata prima di intervenire.",
         "preview_title": "Anteprima della pagina",
         "preview_caption": "{doc}, pagina {page}: il passaggio usato è evidenziato",
@@ -151,37 +134,34 @@ PDFs are processed in memory and never stored. Do not upload confidential docume
         "preview_error": "Impossibile creare l'anteprima: {error}",
         "about_md": """
 ### Che cos'è
-Industrial RAG Assistant risponde a domande sui manuali tecnici (PDF) e mostra sempre **da quale documento e pagina** viene ogni risposta. Se i documenti non contengono la risposta, lo dice invece di inventare.
+Uno strumento che risponde a domande sui tuoi manuali tecnici (PDF) e **mostra sempre da dove viene la risposta**: documento e pagina. Se la risposta non è nei documenti, lo dice invece di inventare.
 
 ### Come si usa
-1. Carica uno o più PDF dalla barra laterale, oppure usa i manuali di esempio.
-2. Fai una domanda in italiano o in inglese.
-3. Leggi la risposta, poi controlla le fonti, l'anteprima della pagina e i passaggi recuperati.
+1. **Aggiungi i documenti.** Carica i tuoi manuali in PDF dalla barra laterale a sinistra.
+2. **Fai una domanda** in italiano o in inglese.
+3. **Controlla la risposta.** Sotto trovi la fonte, la pagina del PDF con la frase evidenziata e i passaggi che l'assistente ha trovato.
 
-### Come funziona
-- **Lettura:** si estrae il testo di ogni pagina, tenendo nome del documento e numero di pagina.
-- **Chunk:** le pagine sono divise in pezzi piccoli e sovrapposti che non attraversano mai una pagina, così le citazioni sono esatte.
-- **Embedding:** ogni pezzo diventa un vettore che ne rappresenta il significato, anche tra italiano e inglese.
-- **Ricerca:** la domanda diventa un vettore e si trovano i pezzi più simili.
-- **Risposta vincolata:** i pezzi vengono dati al motore di risposta con regole precise: rispondere solo da lì, citare le fonti, dire quando le evidenze non bastano.
-- **Verifica:** il codice controlla ogni citazione rispetto ai passaggi realmente forniti.
+### Cosa succede quando fai una domanda
+1. **Cerca** nei documenti i passaggi più vicini alla tua domanda.
+2. **Scrive la risposta** usando solo quei passaggi.
+3. **Si controlla da solo:** ogni fonte che nomina deve essere un passaggio che ha davvero ricevuto.
+4. **Dice «informazioni insufficienti»** quando non trova nulla di pertinente.
 
-### Motori di risposta
-- **Offline (predefinito):** cita le frasi che meglio corrispondono alla domanda. Nessuna chiave API, sempre ancorato al testo, ma non riformula e sbaglia quando la domanda usa parole diverse dal manuale.
-- **Claude (opzionale):** riscrive la risposta a partire dai passaggi, con la tua chiave API (resta solo in memoria). È implementato ma **non ancora valutato** in questo progetto.
+*Esempio:* chiedi «Qual è la coppia di serraggio del dado della girante?» → trova la pagina 3 del manuale della pompa → risponde «120 N.m» → ti mostra la pagina 3 con quella frase evidenziata.
 
-### Misure di sicurezza
-- Le istruzioni nascoste in un PDF (prompt injection) vengono tolte dalle evidenze e segnalate.
-- Se i documenti sono in disaccordo, si riportano entrambi i valori con le fonti.
-- Le risposte con valori tecnici ricordano di verificarli sulla pagina citata.
+### Due modi di rispondere
+- **Offline (predefinito):** copia dal manuale le frasi che meglio corrispondono. Gratis, senza account.
+- **Claude (opzionale):** scrive una risposta più naturale, con la tua chiave API. In questo progetto non è ancora stato provato.
 
-### Limiti
-- La valutazione è piccola e sintetica: non prova l'affidabilità su manuali reali.
-- Niente OCR: i PDF scansionati vengono rifiutati. Le tabelle perdono la struttura.
-- Non usarlo per decisioni di sicurezza senza controllare la pagina citata.
+### Cosa non fa
+- Non legge i PDF scansionati (niente OCR).
+- Non capisce bene le tabelle.
+- Non sostituisce il controllo della pagina: verifica sempre coppie, pressioni e temperature sulla pagina citata.
 
-### Privacy e codice
-I PDF sono elaborati in memoria e mai salvati. Non caricare documenti riservati in una demo pubblica. Codice sorgente: github.com/sartorelliriccardo/industrial-rag-assistant
+### Privacy
+I tuoi PDF restano solo in memoria e non vengono mai salvati. Non caricare documenti riservati in una demo pubblica.
+
+I dettagli tecnici sono nella scheda **Architettura**, e quanto funziona bene nella scheda **Valutazione**.
 """,
         "tab_arch": "Architettura",
         "arch_title": "Architettura: come funziona",
@@ -209,7 +189,7 @@ I PDF sono elaborati in memoria e mai salvati. Non caricare documenti riservati 
 |---|---|---|---|
 | Lettura | `pdf_loader.py` | PyMuPDF | Estrae il testo di ogni pagina tenendo nome del documento e numero di pagina; errori chiari per PDF vuoti, danneggiati, protetti o scansionati |
 | Chunking | `chunking.py` | Python | Finestra scorrevole di 400 caratteri con 80 di sovrapposizione, tagliata sugli spazi, mai a cavallo di una pagina |
-| Embedding | `embeddings.py` | FastEmbed (ONNX), MiniLM multilingue quantizzato a 8 bit, 384 dimensioni | Trasforma il testo in un vettore di lunghezza unitaria che ne rappresenta il significato, in italiano e inglese |
+| Embedding | `embeddings.py` | Predefinito: parole chiave radicalizzate in un vettore (nessun modello). Opzionale: FastEmbed (ONNX), MiniLM multilingue quantizzato a 8 bit | Trasforma il testo in un vettore di lunghezza unitaria. La modalità per parole chiave trova le parole in comune; quella neurale trova il significato, anche tra italiano e inglese |
 | Indice | `index.py` | FAISS (indice esatto a prodotto scalare) | Conserva i vettori; con vettori unitari il prodotto scalare è la similarità coseno |
 | Ricerca | `retrieval.py` | - | Trova i top-k passaggi più simili con il loro punteggio |
 | Generazione | `generation.py`, `prompts.py` | - | Applica la soglia di punteggio, toglie le istruzioni iniettate, costruisce il prompt vincolato e verifica le citazioni |
@@ -228,7 +208,7 @@ I PDF sono elaborati in memoria e mai salvati. Non caricare documenti riservati 
 - **Rifiutare invece di indovinare:** un punteggio di similarità basso significa che il motore non viene nemmeno chiamato.
 """,
         "eval_title": "Quanto funziona bene?",
-        "eval_intro": "Risultati della valutazione ripetibile (eval/questions.jsonl): {n} domande, {n_ans} con risposta nei documenti e {n_unans} senza. Motore offline, chunk {size}/{overlap}, top-{k}, similarità minima {min_score}.",
+        "eval_intro": "Risultati della valutazione ripetibile (eval/questions.jsonl): {n} domande, {n_ans} con risposta nei documenti e {n_unans} senza. Ricerca: {mode}. Motore di risposta offline, chunk {size}/{overlap}, top-{k}, similarità minima {min_score}.",
         "eval_missing": "Nessun risultato di valutazione trovato. Esegui: python -m rag_assistant.evaluation --out eval/results.json",
         "m_hit1": "Pagina giusta al primo posto",
         "m_hit3": "Pagina giusta nei primi 3",

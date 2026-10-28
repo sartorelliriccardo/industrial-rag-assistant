@@ -29,11 +29,11 @@ def test_unknown_language_falls_back_to_english():
     assert t("xx", "remove") == t("en", "remove")
 
 
-def test_example_questions_and_problem_texts_have_translations():
-    from rag_assistant.i18n import EXAMPLE_QUESTIONS, PROBLEM_KEYS
+def test_problem_texts_and_search_modes_have_translations():
+    from rag_assistant.i18n import PROBLEM_KEYS
 
     for lang in LANGUAGES:
-        for key in [*EXAMPLE_QUESTIONS, *PROBLEM_KEYS.values()]:
+        for key in [*PROBLEM_KEYS.values(), "search_keyword", "search_semantic"]:
             assert key in STRINGS[lang], f"{lang}: missing {key}"
 
 

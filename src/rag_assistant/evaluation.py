@@ -13,9 +13,15 @@ from pathlib import Path
 from rag_assistant.config import (
     DEFAULT_MIN_SCORE,
     DEFAULT_TOP_K,
+    MIN_SCORE_BY_SEARCH,
     get_chunk_settings,
 )
-from rag_assistant.embeddings import Embedder, FastEmbedEmbedder, HashingEmbedder
+from rag_assistant.embeddings import (
+    Embedder,
+    FastEmbedEmbedder,
+    HashingEmbedder,
+    LexicalEmbedder,
+)
 from rag_assistant.llm import get_provider
 from rag_assistant.pipeline import RagPipeline
 
@@ -151,6 +157,7 @@ def run_evaluation(
     results = [evaluate_question(pipeline, q) for q in load_questions(questions_path)]
     summary = summarize(results)
     summary["config"] = {
+        "search": type(embedder).__name__,
         "provider": provider_name,
         "chunk_size": pipeline.chunk_size,
         "chunk_overlap": pipeline.chunk_overlap,
@@ -173,17 +180,33 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     p.add_argument("--docs", default="data/sample_pdfs")
     p.add_argument("--questions", default="eval/questions.jsonl")
-    p.add_argument("--embedder", choices=["fastembed", "hash"], default="fastembed")
+    p.add_argument(
+        "--search",
+        choices=["keyword", "semantic", "hash"],
+        default="keyword",
+        help="keyword = stemmed words, no model; semantic = neural embeddings; hash = test only",
+    )
     p.add_argument("--provider", choices=["extractive", "anthropic"], default="extractive")
     p.add_argument("--chunk-size", type=int, default=default_size)
     p.add_argument("--overlap", type=int, default=default_overlap)
     p.add_argument("--top-k", type=int, default=DEFAULT_TOP_K)
-    p.add_argument("--min-score", type=float, default=DEFAULT_MIN_SCORE)
+    p.add_argument(
+        "--min-score",
+        type=float,
+        default=None,
+        help="minimum similarity (default depends on --search)",
+    )
     p.add_argument("--sweep-min-score", type=float, nargs="*", help="try several thresholds")
     p.add_argument("--out", help="write full JSON results here")
     args = p.parse_args()
 
-    embedder = FastEmbedEmbedder() if args.embedder == "fastembed" else HashingEmbedder()
+    embedder = {
+        "keyword": LexicalEmbedder,
+        "semantic": FastEmbedEmbedder,
+        "hash": HashingEmbedder,
+    }[args.search]()
+    if args.min_score is None:
+        args.min_score = MIN_SCORE_BY_SEARCH.get(args.search, DEFAULT_MIN_SCORE)
     thresholds = args.sweep_min_score or [args.min_score]
     last_results: list[QuestionResult] = []
     all_summaries = []

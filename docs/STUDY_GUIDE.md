@@ -36,8 +36,9 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 
 **Similarità coseno.** Misura l'angolo tra due vettori, non la lunghezza. Con vettori normalizzati a lunghezza 1 il coseno coincide con il prodotto scalare: per questo il codice normalizza sempre (`_normalize`).
 
-**Due implementazioni dietro la stessa interfaccia (`Embedder`).**
-- `FastEmbedEmbedder`: modello vero multilingue, in formato ONNX (niente PyTorch: installazione e deploy molto più leggeri).
+**Tre implementazioni dietro la stessa interfaccia (`Embedder`).**
+- `LexicalEmbedder` (**predefinito**): ricerca per parole chiave. Toglie le parole vuote, riduce le parole alle prime 6 lettere (così «lubricated» e «lubricate» coincidono) e le "spalma" in un vettore con un hash. Nessun modello, circa 225 MB di memoria totale per l'app. Non capisce sinonimi né parafrasi.
+- `FastEmbedEmbedder` (opzionale): modello vero multilingue, in formato ONNX e quantizzato a 8 bit (niente PyTorch). Capisce il significato, anche tra italiano e inglese, ma pesa circa 400 MB in più: su Streamlit Cloud gratuito (minimo garantito 690 MB) la prima versione è andata fuori limite. Per questo oggi non è il predefinito.
 - `HashingEmbedder`: ogni parola viene mandata in uno di 512 "cassetti" con un hash; deterministico, senza rete, solo lessicale. Serve ai test: così girano ovunque senza scaricare 220 MB.
 
 **Colloquio.**
@@ -94,7 +95,7 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 
 **Onestà sui limiti.** 43 domande, 11 chunk, soglie tarate sulle stesse domande: i numeri non dimostrano affidabilità su manuali reali. Claude via API non è stato valutato.
 
-**Colloquio.** *Quanto è affidabile?* → "Su un benchmark piccolo e sintetico: retrieval hit@1 80%, risposte corrette 83%, rifiuti corretti 75%. Non lo considero provato su documenti reali; ecco i limiti e gli errori osservati."
+**Colloquio.** *Quanto è affidabile?* → "Su un benchmark piccolo e sintetico: ricerca hit@1 97%, risposte corrette 89%, rifiuti corretti 88% (con la ricerca per parole chiave; le domande le ho scritte io riusando parole dei manuali, quindi il confronto con la ricerca semantica non è equo). Non lo considero provato su documenti reali; ecco i limiti e gli errori osservati."
 
 ## 9. `app/streamlit_app.py` — l'interfaccia
 Barra laterale: motore di risposta, parametri, upload dei PDF, pulsante per i manuali di esempio. La pipeline vive in `st.session_state` (Streamlit rilancia lo script a ogni interazione, quindi lo stato va conservato); il modello di embedding è in `st.cache_resource` (si carica una volta sola). Gli errori dei PDF e delle chiamate API sono mostrati senza far crollare la pagina.

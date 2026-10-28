@@ -1,6 +1,6 @@
 """UI strings in Italian and English. Add a language by adding a dict with the same keys."""
 
-from rag_assistant.i18n_content import CONTENT, EXAMPLE_QUESTIONS, PROBLEM_KEYS  # noqa: F401
+from rag_assistant.i18n_content import CONTENT, PROBLEM_KEYS  # noqa: F401
 
 LANGUAGES = {"it": "Italiano", "en": "English"}
 DEFAULT_LANGUAGE = "it"
@@ -28,18 +28,26 @@ STRINGS: dict[str, dict[str, str]] = {
         "params_note": "Changing chunk size/overlap applies to documents added afterwards.",
         "documents": "Documents",
         "upload": "Upload PDF manuals",
-        "load_samples": "Load synthetic sample manuals",
         "privacy": (
-            "Files are processed in memory and are not stored. "
-            "Do not upload confidential documents to a public demo."
+            "Your files are processed in the server's memory for this session only. "
+            "This app does not write them to disk or to any database, and they are discarded "
+            "when you close the page or press the delete button. The app runs on a third-party "
+            "hosting platform that we do not control. This is a public demo: do not upload "
+            "confidential documents."
         ),
+        "confirm_rights": "I confirm that these documents are not confidential and that I may use them for this test.",
+        "clear_all": "Delete all documents now",
+        "cleared": "Documents deleted from memory.",
+        "idle_note": "Documents are also deleted automatically after {minutes} minutes of inactivity, as long as this page stays open.",
+        "idle_cleared": "Documents deleted after {minutes} minutes of inactivity.",
+        "claude_privacy": "With Claude, the passages found in your documents are sent to Anthropic's API to write the answer. Use the offline engine for anything sensitive.",
         "indexing": "Indexing {name}...",
         "indexed": "{name}: {n} passages indexed",
         "err_corrupted": "{name}: the file is empty, corrupted or password protected.",
         "err_no_text": "{name}: no extractable text found (scanned PDF? OCR is not supported).",
         "err_not_found": "{name}: file not found.",
         "err_pdf": "{name}: could not read this PDF.",
-        "start_hint": "Upload one or more PDFs in the sidebar, or load the sample manuals, to start.",
+        "start_hint": "Upload one or more PDF manuals in the sidebar to start.",
         "indexed_docs": "Indexed documents ({n}) - {chunks} passages",
         "remove": "Remove",
         "question": "Your question",
@@ -87,18 +95,26 @@ STRINGS: dict[str, dict[str, str]] = {
         ),
         "documents": "Documenti",
         "upload": "Carica i manuali in PDF",
-        "load_samples": "Carica i manuali di esempio (sintetici)",
         "privacy": (
-            "I file sono elaborati in memoria e non vengono salvati. "
-            "Non caricare documenti riservati in una demo pubblica."
+            "I tuoi file sono elaborati nella memoria del server solo per questa sessione. "
+            "L'app non li scrive su disco né in alcun database, e vengono eliminati quando "
+            "chiudi la pagina o premi il pulsante di cancellazione. L'app gira su una "
+            "piattaforma di hosting di terzi che non controlliamo. Questa è una demo pubblica: "
+            "non caricare documenti riservati."
         ),
+        "confirm_rights": "Confermo che i documenti non sono riservati e che posso usarli per questa prova.",
+        "clear_all": "Cancella ora tutti i documenti",
+        "cleared": "Documenti cancellati dalla memoria.",
+        "idle_note": "I documenti vengono anche cancellati automaticamente dopo {minutes} minuti di inattività, finché questa pagina resta aperta.",
+        "idle_cleared": "Documenti cancellati dopo {minutes} minuti di inattività.",
+        "claude_privacy": "Con Claude, i passaggi trovati nei tuoi documenti vengono inviati all'API di Anthropic per scrivere la risposta. Per qualsiasi cosa sensibile usa il motore offline.",
         "indexing": "Indicizzazione di {name}...",
         "indexed": "{name}: {n} passaggi indicizzati",
         "err_corrupted": "{name}: il file è vuoto, danneggiato o protetto da password.",
         "err_no_text": "{name}: nessun testo estraibile (PDF scansionato? L'OCR non è supportato).",
         "err_not_found": "{name}: file non trovato.",
         "err_pdf": "{name}: impossibile leggere questo PDF.",
-        "start_hint": "Carica uno o più PDF dalla barra laterale, o usa i manuali di esempio, per iniziare.",
+        "start_hint": "Carica uno o più manuali in PDF dalla barra laterale per iniziare.",
         "indexed_docs": "Documenti indicizzati ({n}) - {chunks} passaggi",
         "remove": "Rimuovi",
         "question": "La tua domanda",

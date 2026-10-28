@@ -8,12 +8,13 @@
       "retrieval_hit_at_3": 0.943,
       "retrieval_hit_at_k": 1.0,
       "retrieval_mrr": 0.871,
-      "answer_correct": 0.829,
+      "answer_correct": 0.857,
       "citation_hit": 1.0,
-      "citation_precision": 1.0,
-      "abstention_correct": 0.75,
-      "false_abstention": 0.171,
+      "citation_precision": 0.989,
+      "abstention_correct": 0.875,
+      "false_abstention": 0.114,
       "config": {
+        "search": "FastEmbedEmbedder",
         "provider": "extractive",
         "chunk_size": 400,
         "chunk_overlap": 80,
@@ -152,9 +153,13 @@
       "category": "conflict",
       "question": "How often should the P-200 bearings be lubricated?",
       "answerable": true,
-      "status": "insufficient",
-      "answer": "The uploaded documents do not contain enough information to answer this question.",
-      "cited": [],
+      "status": "answered",
+      "answer": "Bearing lubrication interval: 1500 operating hours. [pump_P200_datasheet_revA.pdf, p. 1] Lubricate the bearings every 2000 operating hours with lithium grease NLGI 2. [pump_P200_manual.pdf, p. 2] Bearing temperature above 80 degC: check for over-lubrication or shaft misalignment. [pump_P200_manual.pdf, p. 4]",
+      "cited": [
+        "pump_P200_datasheet_revA.pdf#p1",
+        "pump_P200_manual.pdf#p2",
+        "pump_P200_manual.pdf#p4"
+      ],
       "retrieved": [
         "pump_P200_datasheet_revA.pdf#p1",
         "pump_P200_manual.pdf#p1",
@@ -163,24 +168,20 @@
         "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
-      "correct": false,
-      "citation_hit": null,
-      "citation_precision": null,
-      "abstained": true,
-      "problems": [
-        "false abstention"
-      ]
+      "correct": true,
+      "citation_hit": true,
+      "citation_precision": 0.6666666666666666,
+      "abstained": false,
+      "problems": []
     },
     {
       "id": "q07",
       "category": "factual",
       "question": "Which grease is used for the P-200 bearings?",
       "answerable": true,
-      "status": "answered",
-      "answer": "Lubricate the bearings every 2000 operating hours with lithium grease NLGI 2. [pump_P200_manual.pdf, p. 2]",
-      "cited": [
-        "pump_P200_manual.pdf#p2"
-      ],
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
       "retrieved": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_manual.pdf#p4",
@@ -189,20 +190,24 @@
         "compressore_C50_manuale.pdf#p3"
       ],
       "hit_rank": 4,
-      "correct": true,
-      "citation_hit": true,
-      "citation_precision": 1.0,
-      "abstained": false,
-      "problems": []
+      "correct": false,
+      "citation_hit": null,
+      "citation_precision": null,
+      "abstained": true,
+      "problems": [
+        "false abstention"
+      ]
     },
     {
       "id": "q08",
       "category": "factual",
       "question": "How often should the mechanical seal be inspected?",
       "answerable": true,
-      "status": "insufficient",
-      "answer": "The uploaded documents do not contain enough information to answer this question.",
-      "cited": [],
+      "status": "answered",
+      "answer": "Inspect the mechanical seal every 4000 operating hours. [pump_P200_manual.pdf, p. 2]",
+      "cited": [
+        "pump_P200_manual.pdf#p2"
+      ],
       "retrieved": [
         "pump_P200_manual.pdf#p2",
         "compressore_C50_manuale.pdf#p2",
@@ -211,22 +216,22 @@
         "compressore_C50_manuale.pdf#p1"
       ],
       "hit_rank": 1,
-      "correct": false,
-      "citation_hit": null,
-      "citation_precision": null,
-      "abstained": true,
-      "problems": [
-        "false abstention"
-      ]
+      "correct": true,
+      "citation_hit": true,
+      "citation_precision": 1.0,
+      "abstained": false,
+      "problems": []
     },
     {
       "id": "q09",
       "category": "factual",
       "question": "When must the seal be replaced because of leakage?",
       "answerable": true,
-      "status": "insufficient",
-      "answer": "The uploaded documents do not contain enough information to answer this question.",
-      "cited": [],
+      "status": "answered",
+      "answer": "Replace the seal if leakage exceeds 10 drops per minute. [pump_P200_manual.pdf, p. 2]",
+      "cited": [
+        "pump_P200_manual.pdf#p2"
+      ],
       "retrieved": [
         "compressore_C50_manuale.pdf#p2",
         "pump_P200_manual.pdf#p2",
@@ -235,13 +240,11 @@
         "plant_safety_procedures.pdf#p2"
       ],
       "hit_rank": 2,
-      "correct": false,
-      "citation_hit": null,
-      "citation_precision": null,
-      "abstained": true,
-      "problems": [
-        "false abstention"
-      ]
+      "correct": true,
+      "citation_hit": true,
+      "citation_precision": 1.0,
+      "abstained": false,
+      "problems": []
     },
     {
       "id": "q10",
@@ -513,7 +516,7 @@
       "question": "Qual e la portata del compressore C-50?",
       "answerable": true,
       "status": "answered",
-      "answer": "La portata e 5,2 m3/min. [compressore_C50_manuale.pdf, p. 1]",
+      "answer": "Compressore a vite C-50 - Manuale di manutenzione. [compressore_C50_manuale.pdf, p. 1]",
       "cited": [
         "compressore_C50_manuale.pdf#p1"
       ],
@@ -525,11 +528,13 @@
         "plant_safety_procedures.pdf#p2"
       ],
       "hit_rank": 1,
-      "correct": true,
+      "correct": false,
       "citation_hit": true,
       "citation_precision": 1.0,
       "abstained": false,
-      "problems": []
+      "problems": [
+        "missing expected keyword(s)"
+      ]
     },
     {
       "id": "q22",
@@ -895,9 +900,11 @@
       "category": "unanswerable",
       "question": "Qual e il peso del compressore C-50?",
       "answerable": false,
-      "status": "insufficient",
-      "answer": "The uploaded documents do not contain enough information to answer this question.",
-      "cited": [],
+      "status": "answered",
+      "answer": "Compressore a vite C-50 - Manuale di manutenzione. [compressore_C50_manuale.pdf, p. 1]",
+      "cited": [
+        "compressore_C50_manuale.pdf#p1"
+      ],
       "retrieved": [
         "compressore_C50_manuale.pdf#p1",
         "pump_P200_manual.pdf#p1",
@@ -909,8 +916,10 @@
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
-      "abstained": true,
-      "problems": []
+      "abstained": false,
+      "problems": [
+        "answered a question that has no answer in the documents"
+      ]
     },
     {
       "id": "q38",
@@ -983,11 +992,9 @@
       "category": "unanswerable",
       "question": "Qual e la tensione di alimentazione del motore del compressore?",
       "answerable": false,
-      "status": "answered",
-      "answer": "Allarme E03: sovracorrente del motore; verificare le tre fasi di alimentazione. [compressore_C50_manuale.pdf, p. 3]",
-      "cited": [
-        "compressore_C50_manuale.pdf#p3"
-      ],
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
       "retrieved": [
         "compressore_C50_manuale.pdf#p1",
         "pump_P200_manual.pdf#p4",
@@ -999,10 +1006,8 @@
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
-      "abstained": false,
-      "problems": [
-        "answered a question that has no answer in the documents"
-      ]
+      "abstained": true,
+      "problems": []
     },
     {
       "id": "q42",
@@ -1031,12 +1036,9 @@
       "category": "unanswerable",
       "question": "What is the price of the P-200 pump?",
       "answerable": false,
-      "status": "answered",
-      "answer": "Centrifugal Pump P-200 - Maintenance Manual (Rev C, 2023). [pump_P200_manual.pdf, p. 1] Pump P-200 Datasheet (Rev A, 2019). [pump_P200_datasheet_revA.pdf, p. 1]",
-      "cited": [
-        "pump_P200_manual.pdf#p1",
-        "pump_P200_datasheet_revA.pdf#p1"
-      ],
+      "status": "insufficient",
+      "answer": "The uploaded documents do not contain enough information to answer this question.",
+      "cited": [],
       "retrieved": [
         "pump_P200_manual.pdf#p1",
         "pump_P200_datasheet_revA.pdf#p1",
@@ -1048,10 +1050,8 @@
       "correct": null,
       "citation_hit": null,
       "citation_precision": null,
-      "abstained": false,
-      "problems": [
-        "answered a question that has no answer in the documents"
-      ]
+      "abstained": true,
+      "problems": []
     }
   ]
 }

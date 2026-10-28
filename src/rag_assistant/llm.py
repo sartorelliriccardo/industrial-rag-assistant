@@ -2,11 +2,11 @@
 
 import math
 import os
-import re
 from typing import Protocol
 
 from rag_assistant.config import DEFAULT_ANTHROPIC_MODEL, enable_system_certificates
 from rag_assistant.prompts import INSUFFICIENT_TOKEN, QUESTION_RE, SENTENCE_SPLIT, SOURCE_RE
+from rag_assistant.textutil import content_tokens
 
 
 class LLMProvider(Protocol):
@@ -39,16 +39,8 @@ class AnthropicProvider:
         return "".join(block.text for block in message.content if block.type == "text").strip()
 
 
-_STOPWORDS = set(
-    "the a an of to in on at for and or is are be what which how many much does do with by from "
-    "il lo la i gli le un una di del della dei delle da in con su per tra fra e o è sono qual "
-    "quale quali quanto quanta quanti come che cosa dove quando".split()
-)
-
-
 def _tokens(text: str) -> set[str]:
-    words = (w for w in re.findall(r"\w+", text.lower()) if len(w) > 2 and w not in _STOPWORDS)
-    return {w[:-1] if len(w) > 4 and w.endswith("s") else w for w in words}  # crude plural strip
+    return set(content_tokens(text))
 
 
 class ExtractiveProvider:
@@ -64,7 +56,7 @@ class ExtractiveProvider:
     refuse questions about a topic the sources only mention in passing.
     """
 
-    def __init__(self, min_overlap: float = 0.4, max_sentences: int = 3):
+    def __init__(self, min_overlap: float = 0.5, max_sentences: int = 3):
         self.min_overlap = min_overlap
         self.max_sentences = max_sentences
 

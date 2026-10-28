@@ -1,5 +1,6 @@
 """Text -> L2-normalised vectors. Two interchangeable embedders behind one protocol."""
 
+import math
 import re
 import zlib
 from typing import Protocol
@@ -7,6 +8,7 @@ from typing import Protocol
 import numpy as np
 
 from rag_assistant.config import EMBEDDING_MODEL, enable_system_certificates
+from rag_assistant.textutil import content_tokens
 
 # 8-bit quantised ONNX export of the same sentence-transformers model (Apache-2.0).
 QUANTIZED_MODEL_REPO = "Xenova/paraphrase-multilingual-MiniLM-L12-v2"
@@ -68,7 +70,31 @@ class FastEmbedEmbedder:
     def embed(self, texts: list[str]) -> np.ndarray:
         if not texts:
             return np.zeros((0, 384), dtype=np.float32)
-        vectors = np.array(list(self._load().embed(texts)), dtype=np.float32)
+        # small batches keep the peak memory low (fastembed's default is 256 texts at a time)
+        vectors = np.array(list(self._load().embed(texts, batch_size=16)), dtype=np.float32)
+        return _normalize(vectors)
+
+
+class LexicalEmbedder:
+    """Keyword search as a vector: stemmed content words hashed into `dim` buckets.
+
+    No model and no download (a few MB of memory instead of ~400 MB). Texts that share
+    words score high; it does NOT understand synonyms or paraphrases, and it cannot match
+    a question in one language with a document in another. Term frequency is damped with
+    1 + log(tf) so a repeated word does not dominate.
+    """
+
+    def __init__(self, dim: int = 4096):
+        self.dim = dim
+
+    def embed(self, texts: list[str]) -> np.ndarray:
+        vectors = np.zeros((len(texts), self.dim), dtype=np.float32)
+        for row, text in enumerate(texts):
+            counts: dict[str, int] = {}
+            for token in content_tokens(text):
+                counts[token] = counts.get(token, 0) + 1
+            for token, count in counts.items():
+                vectors[row, zlib.crc32(token.encode("utf-8")) % self.dim] += 1 + math.log(count)
         return _normalize(vectors)
 
 

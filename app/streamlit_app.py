@@ -1,7 +1,9 @@
 """Streamlit UI (Italian / English): upload PDFs, ask questions, inspect the evidence."""
 
 import json
+import os
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -12,12 +14,15 @@ except ImportError:  # running without `pip install -e .` (e.g. Streamlit Cloud)
 
 import streamlit as st
 
-from rag_assistant.config import DEFAULT_MIN_SCORE, DEFAULT_TOP_K, get_chunk_settings
-from rag_assistant.embeddings import FastEmbedEmbedder
+from rag_assistant.config import (
+    DEFAULT_TOP_K,
+    MIN_SCORE_BY_SEARCH,
+    get_chunk_settings,
+)
+from rag_assistant.embeddings import FastEmbedEmbedder, LexicalEmbedder
 from rag_assistant.generation import has_critical_values
 from rag_assistant.i18n import (
     DEFAULT_LANGUAGE,
-    EXAMPLE_QUESTIONS,
     LANGUAGES,
     PROBLEM_KEYS,
     t,
@@ -31,12 +36,43 @@ from rag_assistant.pdf_loader import (
 )
 from rag_assistant.pipeline import RagPipeline
 from rag_assistant.preview import render_cited_page, select_sentences
+from rag_assistant.session import check_interval_seconds, idle_expired, passwords_match
 
-SAMPLE_DIR = ROOT / "data" / "sample_pdfs"
-RESULTS_PATH = ROOT / "eval" / "results.json"
+EVAL_DIR = ROOT / "eval"
+# uploaded documents are dropped after this many idle minutes (0 disables it)
+IDLE_MINUTES = float(os.environ.get("DOC_IDLE_MINUTES", "15"))
 MAX_PREVIEWS = 3
 
 st.set_page_config(page_title="Industrial RAG Assistant", page_icon="🏭", layout="wide")
+
+
+def configured_password() -> str:
+    """Optional access password: APP_PASSWORD in the environment or in Streamlit secrets."""
+    value = os.environ.get("APP_PASSWORD", "")
+    if not value:
+        try:
+            value = str(st.secrets.get("APP_PASSWORD", ""))
+        except Exception:  # no secrets file configured
+            value = ""
+    return value
+
+
+def require_password() -> None:
+    """Stop the script until the right password is typed. Does nothing if none is set."""
+    expected = configured_password()
+    if not expected or st.session_state.get("authenticated"):
+        return
+    typed = st.text_input("Password", type="password", key="app_password")
+    if typed and passwords_match(expected, typed):
+        st.session_state.authenticated = True
+        st.rerun()
+    if typed:
+        st.error("Password errata / Wrong password")
+    st.stop()
+
+
+require_password()
+st.session_state.last_active = time.time()  # every full run is a user action
 
 
 @st.cache_resource(show_spinner="Loading embedding model (first run downloads ~120 MB)...")
@@ -46,15 +82,21 @@ def get_embedder() -> FastEmbedEmbedder:
     return embedder
 
 
-def new_pipeline(provider_name: str, api_key: str | None) -> RagPipeline:
+def min_score_for(search: str) -> float:
+    return st.session_state.get(f"min_score_{search}", MIN_SCORE_BY_SEARCH[search])
+
+
+def new_pipeline(search: str, provider_name: str, api_key: str | None) -> RagPipeline:
     size, overlap = get_chunk_settings()
+    # keyword search needs no model (a few MB); semantic search loads ~400 MB of weights
+    embedder = LexicalEmbedder() if search == "keyword" else get_embedder()
     return RagPipeline(
-        get_embedder(),
+        embedder,
         get_provider(provider_name, api_key),
         chunk_size=st.session_state.get("chunk_size", size),
         chunk_overlap=st.session_state.get("chunk_overlap", overlap),
         top_k=st.session_state.get("top_k", DEFAULT_TOP_K),
-        min_score=st.session_state.get("min_score", DEFAULT_MIN_SCORE),
+        min_score=min_score_for(search),
     )
 
 
@@ -70,6 +112,18 @@ def pdf_error_message(lang: str, exc: PdfError, name: str) -> str:
     return t(lang, key, name=name)
 
 
+def clear_documents(language: str, message_key: str = "cleared") -> None:
+    """Drop every uploaded document from memory and reset the upload widget."""
+    pipe = st.session_state.get("pipeline")
+    for name in list(st.session_state.get("files", {})):
+        if pipe:
+            pipe.remove(name)
+    st.session_state.files = {}
+    st.session_state.question = ""
+    st.session_state.upload_gen = st.session_state.get("upload_gen", 0) + 1
+    st.toast(t(language, message_key, minutes=f"{IDLE_MINUTES:g}"))
+
+
 # ---------------------------------------------------------------- sidebar
 with st.sidebar:
     lang = st.radio(
@@ -81,6 +135,14 @@ with st.sidebar:
         key="lang",
     )
     st.header(t(lang, "settings"))
+    search = st.radio(
+        t(lang, "search"),
+        ["keyword", "semantic"],
+        format_func=lambda x: t(lang, f"search_{x}"),
+        key="search",
+    )
+    if search == "semantic":
+        st.caption(t(lang, "search_semantic_note"))
     provider_name = st.radio(
         t(lang, "engine"),
         ["extractive", "anthropic"],
@@ -89,29 +151,44 @@ with st.sidebar:
     api_key = None
     if provider_name == "anthropic":
         api_key = st.text_input(t(lang, "api_key"), type="password", help=t(lang, "api_key_help"))
+        st.warning(t(lang, "claude_privacy"))
 
     with st.expander(t(lang, "params")):
         size, overlap = get_chunk_settings()
         st.number_input(t(lang, "chunk_size"), 100, 4000, size, 50, key="chunk_size")
         st.number_input(t(lang, "chunk_overlap"), 0, 1000, overlap, 10, key="chunk_overlap")
         st.number_input(t(lang, "top_k"), 1, 20, DEFAULT_TOP_K, key="top_k")
-        st.slider(t(lang, "min_score"), 0.0, 0.9, DEFAULT_MIN_SCORE, 0.05, key="min_score")
+        st.slider(
+            t(lang, "min_score"),
+            0.0,
+            0.9,
+            MIN_SCORE_BY_SEARCH[search],
+            0.05,
+            key=f"min_score_{search}",
+        )
         st.caption(t(lang, "params_note"))
 
     st.divider()
     st.subheader(t(lang, "documents"))
+    confirmed = st.checkbox(t(lang, "confirm_rights"), key="confirm_rights")
     uploads = st.file_uploader(
-        t(lang, "upload"), type="pdf", accept_multiple_files=True, key="uploader"
+        t(lang, "upload"),
+        type="pdf",
+        accept_multiple_files=True,
+        key=f"uploader_{st.session_state.get('upload_gen', 0)}",
+        disabled=not confirmed,
     )
-    use_samples = st.button(t(lang, "load_samples"))
+    clear_slot = st.empty()  # filled below, once uploads have been processed
     st.caption(t(lang, "privacy"))
+    if IDLE_MINUTES > 0:
+        st.caption(t(lang, "idle_note", minutes=f"{IDLE_MINUTES:g}"))
 
 # ---------------------------------------------------------------- state
-config_key = (provider_name, api_key)
+config_key = (search, provider_name, api_key)
 if "pipeline" not in st.session_state or st.session_state.get("config_key") != config_key:
     previous = st.session_state.get("files", {})
     try:
-        st.session_state.pipeline = new_pipeline(provider_name, api_key or None)
+        st.session_state.pipeline = new_pipeline(search, provider_name, api_key or None)
         st.session_state.config_key = config_key
         st.session_state.files = {}
         for name, data in previous.items():  # re-index when only the engine changed
@@ -140,17 +217,11 @@ if pipeline:
         data = upload.getvalue()
         if files.get(upload.name) != data:
             add_file(upload.name, data)
-    if use_samples:
-        for pdf in sorted(SAMPLE_DIR.glob("*.pdf")):
-            if pdf.name not in files:
-                add_file(pdf.name, pdf.read_bytes())
+
+clear_slot.button(t(lang, "clear_all"), on_click=clear_documents, args=(lang,), disabled=not files)
 
 
 # ---------------------------------------------------------------- tabs
-def set_question(text: str) -> None:
-    st.session_state.question = text
-
-
 def render_assistant() -> None:
     if pipeline is None:
         st.info(t(lang, "need_key"))
@@ -168,17 +239,6 @@ def render_assistant() -> None:
                 del files[name]
                 st.rerun()
 
-    st.caption(t(lang, "examples_title"))
-    columns = st.columns(len(EXAMPLE_QUESTIONS))
-    for column, (key, example) in zip(columns, EXAMPLE_QUESTIONS.items(), strict=True):
-        column.button(
-            t(lang, key),
-            key=f"btn_{key}",
-            on_click=set_question,
-            args=(example,),
-            use_container_width=True,
-        )
-
     question = st.text_input(
         t(lang, "question"), placeholder=t(lang, "placeholder"), key="question"
     )
@@ -186,7 +246,7 @@ def render_assistant() -> None:
         return
 
     pipeline.top_k = st.session_state.get("top_k", DEFAULT_TOP_K)
-    pipeline.min_score = st.session_state.get("min_score", DEFAULT_MIN_SCORE)
+    pipeline.min_score = min_score_for(search)
     try:
         with st.spinner(t(lang, "searching")):
             answer = pipeline.ask(question)
@@ -321,16 +381,18 @@ def render_architecture() -> None:
 
 def render_evaluation() -> None:
     st.subheader(t(lang, "eval_title"))
-    if not RESULTS_PATH.exists():
+    results_path = EVAL_DIR / f"results_{search}.json"  # the file matching the chosen search
+    if not results_path.exists():
         st.info(t(lang, "eval_missing"))
         return
-    data = json.loads(RESULTS_PATH.read_text(encoding="utf-8"))
+    data = json.loads(results_path.read_text(encoding="utf-8"))
     summary, results = data["summaries"][-1], data["results"]
     cfg = summary["config"]
     st.caption(
         t(
             lang,
             "eval_intro",
+            mode=t(lang, f"search_{search}"),
             n=summary["n_questions"],
             n_ans=summary["n_answerable"],
             n_unans=summary["n_unanswerable"],
@@ -388,3 +450,22 @@ with tab_arch:
     render_architecture()
 with tab_eval:
     render_evaluation()
+
+
+@st.fragment(run_every=check_interval_seconds(IDLE_MINUTES))
+def idle_guard() -> None:
+    """Drop the documents if nobody touched the app for IDLE_MINUTES.
+
+    Runs by itself every few seconds while the page is open (a fragment re-run does not
+    count as user activity). Once the page is closed nothing runs here: the session is then
+    discarded by Streamlit.
+    """
+    if st.session_state.get("files") and idle_expired(
+        st.session_state.get("last_active", time.time()), time.time(), IDLE_MINUTES
+    ):
+        clear_documents(lang, "idle_cleared")
+        st.rerun()
+
+
+if IDLE_MINUTES > 0:
+    idle_guard()
