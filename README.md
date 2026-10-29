@@ -208,6 +208,7 @@ How much to trust this: one manual, 12 questions, facts checked by the author, a
 ## Limitations (please read)
 
 - **Small, synthetic, self-written benchmark.** 43 questions over 11 chunks. hit@5 = 1.00 is nearly trivial when the corpus has 11 chunks; hit@1 is the more informative number. These results do **not** show the system is reliable on real manuals; the one real manual I tried (see above) is 12 questions on one document, with 2 of the 9 checkable answers still not useful.
+- **The neural model was trained on short texts.** `paraphrase-multilingual-MiniLM-L12-v2` has a `max_seq_length` of 128 word pieces (from its model card); FastEmbed truncates at 512. Chunks of 800 characters have a median of 184 pieces on the real manual I tried (72% above 128, none above 512). I did not measure separately whether this hurts meaning search.
 - **Diagrams and images are invisible.** Only extractable text is indexed; a manual whose answer is in a figure (the one I tried has about 520 images) cannot be answered from that figure.
 - **Thresholds and word lists were tuned on the same questions used to report results**, so the numbers are optimistic. A proper evaluation needs a separate test set from real documents.
 - **Keyword search does not understand meaning:** it fails on synonyms and paraphrases and cannot match a question in one language with a document in another. The neural mode handles those in principle, at a memory cost that did not fit a free public server.
@@ -249,12 +250,13 @@ What this does **not** guarantee:
 2. On [share.streamlit.io](https://share.streamlit.io) create an app from the repo: main file `app/streamlit_app.py`; dependencies are read from `requirements.txt`.
 3. Keep the default **keyword search**: the semantic mode is likely to exceed the free memory limit (see Design decisions).
 
-A public demo is visible to anyone with the URL: use only non-confidential documents. Users can paste their own API key in the sidebar; do not put your key in the app's public configuration.
+A public demo is visible to anyone with the URL: use only non-confidential documents. Users can paste their own API key in the sidebar (the "How it works" tab explains what the key is, what a request costs and what is sent to Anthropic); do not put your key in the app's public configuration.
 
 ## Project structure
 
 ```
-app/streamlit_app.py      Streamlit UI
+app/streamlit_app.py      Streamlit page (about 50 lines: assembles the parts below)
+app/ui_*.py               one file per part: sidebar, the five tabs, privacy, shared state
 src/rag_assistant/        library (see table above)
 tests/                    pytest suite (offline)
 eval/questions.jsonl      evaluation set

@@ -97,7 +97,21 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 
 **Colloquio.** *Quanto è affidabile?* → "Su un benchmark piccolo e sintetico: ricerca hit@1 97%, risposte corrette 89%, rifiuti corretti 88% (con la ricerca per parole chiave; le domande le ho scritte io riusando parole dei manuali, quindi il confronto con la ricerca semantica non è equo). Non lo considero provato su documenti reali; ecco i limiti e gli errori osservati."
 
-## 9. `app/streamlit_app.py` — l'interfaccia
+## 9. `app/` — l'interfaccia
+Il file `streamlit_app.py` (circa 50 righe) monta solo la pagina: legge le scelte della barra laterale, apre l'archivio della sessione e passa tutto alle cinque schede. Ogni parte sta in un file accanto, con un nome che dice cosa fa:
+
+| File | Cosa contiene |
+|---|---|
+| `ui_sidebar.py` | lingua, metodo di ricerca, motore, parametri, conferma e caricamento dei PDF |
+| `ui_assistant.py` | scheda *Assistente*: domanda, risposta, fonti, anteprima della pagina, passaggi |
+| `ui_walkthrough.py` | scheda *Passo per passo* (le nove fasi) |
+| `ui_architecture.py` | scheda *Architettura*: i due diagrammi |
+| `ui_evaluation.py` | scheda *Valutazione*: legge `eval/results_*.json` |
+| `ui_privacy.py` | password facoltativa, archivio per sessione, cancellazione dei file, cancellazione dopo inattività |
+| `ui_state.py` | cosa ricevono le schede (`Ctx`) e la creazione della pipeline |
+
+Da presentare: il nucleo è in `src/rag_assistant/` (lettura, pezzi, indice, ricerca, risposta); questi file sono solo l'interfaccia.
+
 Barra laterale: lingua, metodo di ricerca, motore di risposta, parametri, conferma che i documenti non sono riservati, upload dei PDF, pulsante «Cancella ora». Streamlit rilancia lo script a ogni interazione, quindi i dati dell'utente non stanno nelle variabili dello script ma in un archivio per sessione (`workspace.py`), che li elimina pochi secondi dopo la chiusura della pagina. Il modello neurale (se scelto) sta in `st.cache_resource` e si carica una volta sola. Gli errori dei PDF e delle chiamate API sono mostrati senza far crollare la pagina.
 
 **Le cinque schede, e come usarle per spiegare il progetto.**
@@ -115,4 +129,4 @@ Barra laterale: lingua, metodo di ricerca, motore di risposta, parametri, confer
 - **Perché senza LangChain?** Per capire e poter testare ogni componente; sono poche decine di righe ciascuno.
 - **Cosa miglioreresti per primo?** Un set di valutazione su documenti reali e separato da quello di taratura; poi ricerca ibrida (BM25 + vettori), re-ranking e OCR.
 - **Come gestisci chiavi e dati?** Chiavi solo in variabili d'ambiente o nella sessione; `.env` in `.gitignore`; i PDF restano in memoria e non vengono salvati.
-- **Come testi senza API?** `ScriptedProvider` nei test, `HashingEmbedder`, PDF generati al volo: 48 test offline.
+- **Come testi senza API?** `ScriptedProvider` nei test, `HashingEmbedder`, PDF generati al volo: 303 test offline.

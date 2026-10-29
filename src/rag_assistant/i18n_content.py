@@ -38,6 +38,36 @@ A tool that answers questions about your technical manuals (PDF) and **always sh
 - **Offline (default):** copies the best-matching sentences from the manual. Free, no account needed.
 - **Claude (optional):** writes a more natural answer, using your own API key. Not tested yet in this project.
 
+### Search "by meaning" (the neural part)
+By default the app searches **by keywords**: it finds the passages that contain the same words as the question. That works well, but it does not know that "condensate" and "water drain" are about the same thing. Search **by meaning** uses a small neural network to notice that. You switch it on in the sidebar, under "Search method".
+
+**What it does, in 4 steps**
+1. **It cuts the text into word pieces.** Rare words are split: in English, "drain" becomes "dra" + "in" and "condensate" becomes "condensa" + "te".
+2. **It runs the pieces through 12 layers.** In each layer every piece "looks at" the other pieces of the sentence and updates itself, so the same word ends up meaning something slightly different depending on its neighbours.
+3. **It averages the pieces** and gets **384 numbers** for each text: a "fingerprint" of its meaning.
+4. **It compares fingerprints.** A question and a passage with a similar meaning have similar numbers (the app measures the cosine between the two lists of numbers). The closest passages (5 by default) go to the answer engine.
+
+**Where it runs.** On the computer that runs the app (on Streamlit Cloud, its server), on the CPU, with no GPU and without sending anything to third parties. The model is `paraphrase-multilingual-MiniLM-L12-v2`, compressed to 8 bits: the file is about 118 MB and is downloaded from Hugging Face the first time. It needs about 400 MB more memory, which is why it is optional.
+
+**What it does not do.** It does not write answers: it only produces the fingerprints used to find the right passages. It was not trained on your manual but on general sentences in many languages.
+
+**Is it better?** Not necessarily. On my synthetic test, keyword search ranked the right page first more often (97% against 77%); on the one real manual I tried the two were tied (8 questions out of 12 ranked first). Meaning search did win one case: an Italian question about an English manual was found only by it (in 4th place). Also, the model was trained on short texts (up to 128 word pieces), while the passages of that real manual have about 180 on average; I did not measure how much that matters.
+
+### The Claude API key (and "tokens")
+To use Claude instead of the offline engine you need an **API key**.
+
+**What it is.** A secret string that identifies your Anthropic developer account and lets the app call Claude on your behalf. You create it in Anthropic's Console. It is not the same as a Claude.ai subscription: it is pay-as-you-go, with prepaid credits in the Console (some plans may include API credits: check your account).
+
+**Two things called "token"**
+- The **key** (sometimes called an "access token"): the app's password to Claude. Whoever has it spends your credits.
+- **Text tokens**: the small pieces of text Claude splits what it reads and writes into. You pay for the tokens it reads (rules + passages + question) and for the ones it writes (the answer).
+
+**What it costs.** The default model is `claude-haiku-5-5`. According to Anthropic's pricing page it costs 0.10 dollars per million tokens read and 0.50 dollars per million tokens written (page checked on 29 October 2026; prices change). A question sends about 5 passages plus the rules, and the answer is capped at 700 tokens: my estimate is well under a tenth of a cent per question. It is an estimate, not a measurement, because Claude counts tokens its own way.
+
+**What is sent.** Your question and the passages found (not the whole PDF) go to Anthropic's API, where Anthropic's data terms apply, not this app's guarantees. For sensitive documents use the offline engine.
+
+**How the app treats the key.** The field is hidden, the key stays in the memory of your session only, it is not written to disk or to logs, and it is dropped shortly after you close the page. Still, you type it into an app hosted by a third party: for a test, use a key created for the purpose and **revoke** it in the Console when you are done. Never paste it into a chat, a repository or a public file.
+
 ### What it does not do
 - It cannot read scanned PDFs (no OCR).
 - It does not understand tables well.
@@ -80,7 +110,7 @@ Technical details are in the **Architecture** tab, and how well it works is in t
 | Generation | `generation.py`, `prompts.py` | - | Applies the score threshold, removes injected instructions, builds the constrained prompt and verifies the citations |
 | Answer engine | `llm.py` | Offline extractive engine or Anthropic API | Writes the answer from the evidence only; swappable through a one-method interface |
 | Evaluation | `evaluation.py` | - | Four separate metrics on 43 questions: retrieval, correctness, citations, refusals |
-| Interface | `app/streamlit_app.py` | Streamlit | Upload, answer, sources, page preview, evaluation view |
+| Interface | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Upload, answer, sources, page preview, evaluation view |
 
 ### Design decisions
 - **No RAG framework.** Every step is short, readable and tested, so each choice can be explained and measured.
@@ -153,6 +183,36 @@ Uno strumento che risponde a domande sui tuoi manuali tecnici (PDF) e **mostra s
 - **Offline (predefinito):** copia dal manuale le frasi che meglio corrispondono. Gratis, senza account.
 - **Claude (opzionale):** scrive una risposta più naturale, con la tua chiave API. In questo progetto non è ancora stato provato.
 
+### La ricerca «per significato» (la parte neurale)
+Per impostazione predefinita l'app cerca **per parole chiave**: trova i passaggi che contengono le stesse parole della domanda. Funziona bene, ma non sa che «condensa» e «scarico dell'acqua» parlano della stessa cosa. La ricerca **per significato** usa una piccola rete neurale per accorgersene. La attivi dalla barra laterale, in «Metodo di ricerca».
+
+**Cosa fa, in 4 passi**
+1. **Spezza il testo in pezzi di parola.** Le parole rare vengono divise: in inglese «drain» diventa «dra» + «in» e «condensate» diventa «condensa» + «te».
+2. **Fa passare i pezzi in 12 strati.** In ogni strato ogni pezzo «guarda» gli altri pezzi della frase e si aggiorna, così la stessa parola assume un significato leggermente diverso a seconda di ciò che ha intorno.
+3. **Fa la media dei pezzi** e ottiene **384 numeri** per ogni testo: un'«impronta» del suo significato.
+4. **Confronta le impronte.** Una domanda e un passaggio con significato simile hanno numeri simili (l'app misura il coseno tra i due elenchi di numeri). I passaggi più vicini (5 per impostazione predefinita) vanno al motore di risposta.
+
+**Dove gira.** Sul computer che esegue l'app (su Streamlit Cloud è il suo server), con la CPU, senza GPU e senza inviare nulla a terzi. Il modello è `paraphrase-multilingual-MiniLM-L12-v2`, compresso a 8 bit: il file pesa circa 118 MB e la prima volta viene scaricato da Hugging Face. Richiede circa 400 MB di memoria in più, ed è per questo che è opzionale.
+
+**Cosa non fa.** Non scrive le risposte: produce solo le impronte che servono a trovare i passaggi giusti. Non è stato addestrato sul tuo manuale, ma su frasi generiche in molte lingue.
+
+**È meglio?** Non necessariamente. Nel mio test sintetico la ricerca per parole chiave ha messo la pagina giusta al primo posto più spesso (97% contro 77%); sull'unico manuale vero che ho provato i due metodi sono pari (8 domande su 12 al primo posto). La ricerca per significato ha vinto in un caso: una domanda in italiano su un manuale in inglese è stata trovata solo da lei (al 4° posto). Inoltre il modello è stato addestrato su testi brevi (fino a 128 pezzi di parola), mentre i passaggi di quel manuale ne hanno in media circa 180: non ho misurato quanto questo conti.
+
+### La chiave API di Claude (e i «token»)
+Per usare Claude al posto del motore offline serve una **chiave API**.
+
+**Che cos'è.** Una stringa segreta che identifica il tuo account sviluppatore Anthropic e permette all'app di chiamare Claude a nome tuo. Si crea nella Console di Anthropic. Non è lo stesso di un abbonamento a Claude.ai: si paga a consumo, con crediti prepagati nella Console (alcuni piani possono includere crediti API: controlla sul tuo account).
+
+**Due cose che si chiamano «token»**
+- La **chiave** (a volte detta «token di accesso»): è la password dell'app verso Claude. Chi la possiede spende i tuoi crediti.
+- I **token di testo**: i pezzetti in cui Claude divide ciò che legge e ciò che scrive. Si paga per quelli che legge (regole + passaggi + domanda) e per quelli che scrive (la risposta).
+
+**Quanto costa.** Il modello predefinito è `claude-haiku-5-5`. Secondo la pagina prezzi di Anthropic costa 0,10 dollari per milione di token letti e 0,50 dollari per milione di token scritti (pagina consultata il 29 ottobre 2026; i prezzi cambiano). Una domanda invia circa 5 passaggi più le regole, e la risposta è limitata a 700 token: la mia stima è ben meno di un decimo di centesimo a domanda. È una stima e non una misura, perché Claude conta i token a modo suo.
+
+**Cosa viene inviato.** La tua domanda e i passaggi trovati (non l'intero PDF) vanno all'API di Anthropic, dove valgono le condizioni sui dati di Anthropic e non le garanzie di questa app. Per documenti sensibili usa il motore offline.
+
+**Come la tratta l'app.** Il campo è nascosto, la chiave resta solo nella memoria della tua sessione, non viene scritta su disco né nei registri, e viene eliminata poco dopo la chiusura della pagina. Resta il fatto che la digiti in un'app ospitata da terzi: per una prova usa una chiave creata apposta e **revocala** dalla Console quando hai finito. Non incollarla mai in una chat, in un repository o in un file pubblico.
+
 ### Cosa non fa
 - Non legge i PDF scansionati (niente OCR).
 - Non capisce bene le tabelle.
@@ -195,7 +255,7 @@ I dettagli tecnici sono nella scheda **Architettura**, e quanto funziona bene ne
 | Generazione | `generation.py`, `prompts.py` | - | Applica la soglia di punteggio, toglie le istruzioni iniettate, costruisce il prompt vincolato e verifica le citazioni |
 | Motore di risposta | `llm.py` | Motore offline estrattivo o API Anthropic | Scrive la risposta solo dalle evidenze; sostituibile tramite un'interfaccia a un solo metodo |
 | Valutazione | `evaluation.py` | - | Quattro metriche separate su 43 domande: ricerca, correttezza, citazioni, rifiuti |
-| Interfaccia | `app/streamlit_app.py` | Streamlit | Caricamento, risposta, fonti, anteprima della pagina, vista della valutazione |
+| Interfaccia | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Caricamento, risposta, fonti, anteprima della pagina, vista della valutazione |
 
 ### Scelte di progetto
 - **Nessun framework RAG.** Ogni passaggio è breve, leggibile e testato, così ogni scelta si può spiegare e misurare.
