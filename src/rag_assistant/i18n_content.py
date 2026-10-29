@@ -1,4 +1,4 @@
-"""Long UI texts (About and Evaluation tabs, examples, preview). Merged into i18n.STRINGS.
+"""Long UI texts (About and Architecture tabs, examples, preview). Merged into i18n.STRINGS.
 
 Avoid curly braces in the markdown texts: they are format fields for `t(...)`.
 """
@@ -7,7 +7,6 @@ CONTENT: dict[str, dict[str, str]] = {
     "en": {
         "tab_assistant": "Assistant",
         "tab_about": "How it works",
-        "tab_eval": "Evaluation",
         "search": "Search method",
         "search_keyword": "By keywords (light, default)",
         "search_semantic": "By meaning (neural model)",
@@ -36,7 +35,7 @@ A tool that answers questions about your technical manuals (PDF) and **always sh
 
 ### Three ways to answer
 - **Offline (default):** copies the best-matching sentences from the manual. Free, no account needed.
-- **Free test engine (Groq, optional):** a real language model writes the answer from the passages found. You need your own free key from Groq; the passages leave the server. Tried once on one real manual: it answered 10 of 12 questions usefully with keyword search (see the README), but it can still answer wrongly with confidence when the right passage was not found.
+- **Free test engine (Groq, optional):** a real language model writes the answer from the passages found. You need your own free key from Groq; the passages leave the server. It can still answer wrongly with confidence when the right passage was not found.
 - **Claude (optional):** writes a more natural answer, using your own API key. Not tested yet in this project.
 
 ### Search "by meaning" (the neural part)
@@ -52,7 +51,7 @@ By default the app searches **by keywords**: it finds the passages that contain 
 
 **What it does not do.** It does not write answers: it only produces the fingerprints used to find the right passages. It was not trained on your manual but on general sentences in many languages.
 
-**Is it better?** Not necessarily. On my synthetic test, keyword search ranked the right page first more often (97% against 77%); on the one real manual I tried the two were tied (8 questions out of 12 ranked first). Meaning search did win one case: an Italian question about an English manual was found only by it (in 4th place). Also, the model was trained on short texts (up to 128 word pieces), while the passages of that real manual have about 180 on average; I did not measure how much that matters.
+**Is it better?** Not necessarily. It helps with synonyms and with questions in another language, but it is less exact than keywords on codes, numbers and error messages. Also, the model was trained on short texts (up to 128 word pieces), while the passages here are often longer.
 
 ### The Claude API key (and "tokens")
 To use Claude instead of the offline engine you need an **API key**.
@@ -77,7 +76,7 @@ To use Claude instead of the offline engine you need an **API key**.
 ### Privacy
 Your PDFs are used in memory only and are never saved. Do not upload confidential documents to a public demo.
 
-Technical details are in the **Architecture** tab, and how well it works is in the **Evaluation** tab.
+Technical details are in the **Architecture** tab. The measurements on a real manual are in the project README.
 """,
         "tab_arch": "Architecture",
         "arch_title": "Architecture: how it works",
@@ -121,7 +120,7 @@ It uses no model: it compares **words**. It is the default search.
 3. **Each text becomes a list of 4096 numbers.** Every word lands in a fixed slot (a calculation called a hash) and the number written there is its weight.
 4. **Question and passages are compared with the cosine** (how much the two lists point in the same direction). Only passages above the threshold of 0.05 are used.
 
-**Strengths:** light (the whole app uses about 225 MB, measured on my PC), no download, exact on codes, numbers and technical terms.
+**Strengths:** light (the whole app uses about 225 MB of memory), no download, exact on codes, numbers and technical terms.
 **Limits:** it does not understand synonyms or other languages, and a different form of a word ("pesa" against "peso") may not match.
 """,
         "arch_nn_md": """
@@ -134,8 +133,8 @@ It uses a small model (`paraphrase-multilingual-MiniLM-L12-v2`, compressed to 8 
 4. **Question and passages are compared with the cosine**, as before. The threshold is 0.25.
 
 **Where it runs:** on the app's server, on the CPU. The file is about 118 MB (downloaded from Hugging Face the first time) and it needs about 400 MB more memory.
-**Strengths:** it understands synonyms and a question in one language about a manual in another (in my synthetic test, an Italian question about an English manual was found only by it).
-**Limits:** it is less exact on codes, numbers and error messages. On the coffee-machine manual it missed an English error message. It was trained on short texts (up to 128 pieces) and the passages here have about 180.
+**Strengths:** it understands synonyms and a question in one language about a manual in another.
+**Limits:** it is less exact on codes, numbers and error messages. It was trained on short texts (up to 128 pieces) and the passages here are often longer (800 characters is roughly 180 pieces).
 """,
         "arch_groq_md": """
 ### Both searches + Groq
@@ -147,16 +146,7 @@ Groq does not search: it **writes the answer**. It works with either search, whi
 4. **The citations the model wrote are brought to one style** (`【S3】`, `[ S3 ]`, `[S1, S2]` become `[S3]`), each source is checked to exist and replaced with document and page.
 5. If the model replies INSUFFICIENT_EVIDENCE, the answer is "not enough information". If it cites nothing, the answer is shown as "unverifiable".
 
-**What I measured** (one coffee-machine manual, 12 questions, graded by me):
-
-| | Keywords | Neural network |
-|---|---|---|
-| Right page among the passages sent | 11/12 | 8/12 |
-| Useful answers, offline engine | 5/12 | 2/12 |
-| Useful answers, Groq | 10/12 | 7/12 (+2 partly right) |
-| Out-of-manual questions declined | 3/3 | 3/3 |
-
-The model cannot use what the search does not hand it: if the right passage is missing it may answer wrongly and confidently (it happened with "which milk should I use?"). It is one manual: it does not show the same holds for others.
+**Limits:** the model can only use what the search hands it. If the right passage is missing, it may answer wrongly and with confidence. The citation check verifies that the source exists, not that it supports the sentence.
 """,
         "arch_md": """
 ### Components
@@ -171,7 +161,7 @@ The model cannot use what the search does not hand it: if the right passage is m
 | Generation | `generation.py`, `prompts.py` | - | Applies the score threshold, removes injected instructions, builds the constrained prompt and verifies the citations |
 | Answer engine | `llm.py` | Offline extractive engine, Groq (free test key) or Anthropic API | Writes the answer from the evidence only; swappable through a one-method interface |
 | Evaluation | `evaluation.py` | - | Four separate metrics on 43 questions: retrieval, correctness, citations, refusals |
-| Interface | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Upload, answer, sources, page preview, evaluation view |
+| Interface | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Upload, answer, sources, page preview |
 
 ### Design decisions
 - **No RAG framework.** Every step is short, readable and tested, so each choice can be explained and measured.
@@ -183,37 +173,10 @@ The model cannot use what the search does not hand it: if the right passage is m
 - **Layered defence against prompt injection:** suspicious sentences are removed, the prompt declares sources untrusted, source text is escaped, and citations are verified afterwards. It reduces the risk, it does not remove it.
 - **Refuse rather than guess:** a low similarity score means the engine is never called.
 """,
-        "eval_title": "How well does it work?",
-        "eval_intro": "Results of the repeatable evaluation (eval/questions.jsonl): {n} questions, {n_ans} with an answer in the documents and {n_unans} without. Search: {mode}. Offline answer engine, chunk {size}/{overlap}, top-{k}, minimum similarity {min_score}.",
-        "eval_missing": "No evaluation results found. Run: python -m rag_assistant.evaluation --out eval/results.json",
-        "m_hit1": "Right page ranked first",
-        "m_hit3": "Right page in top 3",
-        "m_mrr": "MRR (retrieval)",
-        "m_correct": "Correct answers",
-        "m_cit_hit": "Citation points to the right page",
-        "m_cit_prec": "Citation precision",
-        "m_abst": "Correct refusals",
-        "m_false_abst": "Wrong refusals",
-        "eval_problems": "Observed errors",
-        "eval_no_problems": "No errors in this run.",
-        "col_id": "ID",
-        "col_category": "Category",
-        "col_question": "Question",
-        "col_problem": "Problem",
-        "prob_unanswerable_answered": "Answered a question that has no answer in the documents",
-        "prob_retrieval_miss": "Retrieval miss: the right page is not in the results",
-        "prob_false_abstention": "Refused a question that has an answer",
-        "prob_missing_keyword": "The answer lacks the expected content",
-        "prob_forbidden": "The answer contains forbidden content (injected instruction followed?)",
-        "prob_no_gold_citation": "No citation points to the right page",
-        "eval_limits_md": """
-**Read these numbers with care.** They come from a small, self-written benchmark over synthetic documents (11 passages in total), and the thresholds were tuned on the same questions, so they are optimistic. They do **not** show that the system is reliable on real manuals. The Claude engine has not been evaluated. Details and the refusal trade-off are in the README.
-""",
     },
     "it": {
         "tab_assistant": "Assistente",
         "tab_about": "Come funziona",
-        "tab_eval": "Valutazione",
         "search": "Metodo di ricerca",
         "search_keyword": "Per parole chiave (leggero, predefinito)",
         "search_semantic": "Per significato (modello neurale)",
@@ -242,7 +205,7 @@ Uno strumento che risponde a domande sui tuoi manuali tecnici (PDF) e **mostra s
 
 ### Tre modi di rispondere
 - **Offline (predefinito):** copia dal manuale le frasi che meglio corrispondono. Gratis, senza account.
-- **Motore di prova gratuito (Groq, opzionale):** un vero modello linguistico scrive la risposta dai passaggi trovati. Serve una tua chiave gratuita di Groq; i passaggi escono dal server. Provato una volta su un manuale vero: con la ricerca per parole chiave ha risposto bene a 10 domande su 12 (vedi il README), ma può comunque rispondere in modo sbagliato e sicuro quando il passaggio giusto non è stato trovato.
+- **Motore di prova gratuito (Groq, opzionale):** un vero modello linguistico scrive la risposta dai passaggi trovati. Serve una tua chiave gratuita di Groq; i passaggi escono dal server. Può comunque rispondere in modo sbagliato e sicuro quando il passaggio giusto non è stato trovato.
 - **Claude (opzionale):** scrive una risposta più naturale, con la tua chiave API. In questo progetto non è ancora stato provato.
 
 ### La ricerca «per significato» (la parte neurale)
@@ -258,7 +221,7 @@ Per impostazione predefinita l'app cerca **per parole chiave**: trova i passaggi
 
 **Cosa non fa.** Non scrive le risposte: produce solo le impronte che servono a trovare i passaggi giusti. Non è stato addestrato sul tuo manuale, ma su frasi generiche in molte lingue.
 
-**È meglio?** Non necessariamente. Nel mio test sintetico la ricerca per parole chiave ha messo la pagina giusta al primo posto più spesso (97% contro 77%); sull'unico manuale vero che ho provato i due metodi sono pari (8 domande su 12 al primo posto). La ricerca per significato ha vinto in un caso: una domanda in italiano su un manuale in inglese è stata trovata solo da lei (al 4° posto). Inoltre il modello è stato addestrato su testi brevi (fino a 128 pezzi di parola), mentre i passaggi di quel manuale ne hanno in media circa 180: non ho misurato quanto questo conti.
+**È meglio?** Non necessariamente. Aiuta con i sinonimi e con le domande in un'altra lingua, ma è meno esatta delle parole chiave su codici, numeri e messaggi di errore. Inoltre il modello è stato addestrato su testi brevi (fino a 128 pezzi di parola), mentre i passaggi qui sono spesso più lunghi.
 
 ### La chiave API di Claude (e i «token»)
 Per usare Claude al posto del motore offline serve una **chiave API**.
@@ -283,7 +246,7 @@ Per usare Claude al posto del motore offline serve una **chiave API**.
 ### Privacy
 I tuoi PDF restano solo in memoria e non vengono mai salvati. Non caricare documenti riservati in una demo pubblica.
 
-I dettagli tecnici sono nella scheda **Architettura**, e quanto funziona bene nella scheda **Valutazione**.
+I dettagli tecnici sono nella scheda **Architettura**. Le misure su un manuale vero sono nel README del progetto.
 """,
         "tab_arch": "Architettura",
         "arch_title": "Architettura: come funziona",
@@ -327,7 +290,7 @@ Non usa nessun modello: confronta **parole**. È la ricerca predefinita.
 3. **Ogni testo diventa un elenco di 4096 numeri.** Ogni parola finisce in una posizione fissa (con un calcolo chiamato hash) e il numero scritto lì è il suo peso.
 4. **Domanda e passaggi si confrontano con il coseno** (quanto i due elenchi puntano nella stessa direzione). Si usano solo i passaggi sopra la soglia di 0,05.
 
-**Punti di forza:** leggera (tutta l'app usa circa 225 MB, misurati sul mio PC), nessun download, esatta su codici, numeri e termini tecnici.
+**Punti di forza:** leggera (tutta l'app usa circa 225 MB di memoria), nessun download, esatta su codici, numeri e termini tecnici.
 **Limiti:** non capisce sinonimi né altre lingue, e una forma diversa della parola («pesa» contro «peso») può non combaciare.
 """,
         "arch_nn_md": """
@@ -340,8 +303,8 @@ Usa un piccolo modello (`paraphrase-multilingual-MiniLM-L12-v2`, compresso a 8 b
 4. **Domanda e passaggi si confrontano con il coseno**, come prima. La soglia è 0,25.
 
 **Dove gira:** sul server dell'app, sulla CPU. Il file pesa circa 118 MB (la prima volta si scarica da Hugging Face) e richiede circa 400 MB di memoria in più.
-**Punti di forza:** capisce sinonimi e una domanda in una lingua su un manuale in un'altra (nel mio test sintetico una domanda in italiano su un manuale in inglese l'ha trovata solo lui).
-**Limiti:** è meno esatta su codici, numeri e messaggi di errore. Sul manuale della macchina da caffè ha mancato un messaggio di errore in inglese. È stata addestrata su testi brevi (fino a 128 pezzi) e qui i passaggi ne hanno circa 180.
+**Punti di forza:** capisce sinonimi e una domanda in una lingua su un manuale in un'altra.
+**Limiti:** è meno esatta su codici, numeri e messaggi di errore. È stata addestrata su testi brevi (fino a 128 pezzi) e qui i passaggi sono spesso più lunghi (800 caratteri sono circa 180 pezzi).
 """,
         "arch_groq_md": """
 ### Le due ricerche + Groq
@@ -353,16 +316,7 @@ Groq non cerca: **scrive la risposta**. Funziona con entrambe le ricerche, che g
 4. **Le citazioni scritte dal modello si riportano a uno stile solo** (`【S3】`, `[ S3 ]`, `[S1, S2]` diventano `[S3]`), si controlla che ogni fonte esista e la si sostituisce con documento e pagina.
 5. Se il modello risponde INSUFFICIENT_EVIDENCE, la risposta è «informazioni insufficienti». Se non cita nulla, la risposta è mostrata come «non verificabile».
 
-**Cosa ho misurato** (un manuale di macchina da caffè, 12 domande, valutate da me):
-
-| | Parole chiave | Rete neurale |
-|---|---|---|
-| Pagina giusta tra i passaggi inviati | 11/12 | 8/12 |
-| Risposte utili, motore offline | 5/12 | 2/12 |
-| Risposte utili, Groq | 10/12 | 7/12 (+2 in parte giuste) |
-| Domande fuori manuale rifiutate | 3/3 | 3/3 |
-
-Il modello non può usare ciò che la ricerca non gli passa: se manca il passaggio giusto può rispondere in modo sbagliato e sicuro (è successo con «che latte devo usare?»). È un solo manuale: non dimostra che valga lo stesso per altri.
+**Limiti:** il modello può usare solo ciò che la ricerca gli passa. Se manca il passaggio giusto, può rispondere in modo sbagliato e sicuro. Il controllo delle citazioni verifica che la fonte esista, non che sostenga la frase.
 """,
         "arch_md": """
 ### Componenti
@@ -377,7 +331,7 @@ Il modello non può usare ciò che la ricerca non gli passa: se manca il passagg
 | Generazione | `generation.py`, `prompts.py` | - | Applica la soglia di punteggio, toglie le istruzioni iniettate, costruisce il prompt vincolato e verifica le citazioni |
 | Motore di risposta | `llm.py` | Motore offline estrattivo, Groq (chiave gratuita di prova) o API Anthropic | Scrive la risposta solo dalle evidenze; sostituibile tramite un'interfaccia a un solo metodo |
 | Valutazione | `evaluation.py` | - | Quattro metriche separate su 43 domande: ricerca, correttezza, citazioni, rifiuti |
-| Interfaccia | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Caricamento, risposta, fonti, anteprima della pagina, vista della valutazione |
+| Interfaccia | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Caricamento, risposta, fonti, anteprima della pagina |
 
 ### Scelte di progetto
 - **Nessun framework RAG.** Ogni passaggio è breve, leggibile e testato, così ogni scelta si può spiegare e misurare.
@@ -389,41 +343,5 @@ Il modello non può usare ciò che la ricerca non gli passa: se manca il passagg
 - **Difesa a più livelli dalla prompt injection:** le frasi sospette vengono tolte, il prompt dichiara le fonti non attendibili, il testo delle fonti è protetto da escape e le citazioni sono verificate dopo. Riduce il rischio, non lo elimina.
 - **Rifiutare invece di indovinare:** un punteggio di similarità basso significa che il motore non viene nemmeno chiamato.
 """,
-        "eval_title": "Quanto funziona bene?",
-        "eval_intro": "Risultati della valutazione ripetibile (eval/questions.jsonl): {n} domande, {n_ans} con risposta nei documenti e {n_unans} senza. Ricerca: {mode}. Motore di risposta offline, chunk {size}/{overlap}, top-{k}, similarità minima {min_score}.",
-        "eval_missing": "Nessun risultato di valutazione trovato. Esegui: python -m rag_assistant.evaluation --out eval/results.json",
-        "m_hit1": "Pagina giusta al primo posto",
-        "m_hit3": "Pagina giusta nei primi 3",
-        "m_mrr": "MRR (ricerca)",
-        "m_correct": "Risposte corrette",
-        "m_cit_hit": "Citazione sulla pagina giusta",
-        "m_cit_prec": "Precisione delle citazioni",
-        "m_abst": "Rifiuti corretti",
-        "m_false_abst": "Rifiuti sbagliati",
-        "eval_problems": "Errori osservati",
-        "eval_no_problems": "Nessun errore in questa esecuzione.",
-        "col_id": "ID",
-        "col_category": "Categoria",
-        "col_question": "Domanda",
-        "col_problem": "Problema",
-        "prob_unanswerable_answered": "Ha risposto a una domanda senza risposta nei documenti",
-        "prob_retrieval_miss": "Ricerca fallita: la pagina giusta non è tra i risultati",
-        "prob_false_abstention": "Ha rifiutato una domanda che ha una risposta",
-        "prob_missing_keyword": "Nella risposta manca il contenuto atteso",
-        "prob_forbidden": "La risposta contiene contenuto vietato (istruzione iniettata seguita?)",
-        "prob_no_gold_citation": "Nessuna citazione punta alla pagina giusta",
-        "eval_limits_md": """
-**Leggi questi numeri con cautela.** Vengono da un benchmark piccolo, scritto da noi, su documenti sintetici (11 passaggi in tutto), e le soglie sono state tarate sulle stesse domande: sono quindi ottimistici. **Non** dimostrano che il sistema sia affidabile su manuali reali. Il motore Claude non è stato valutato. I dettagli e il compromesso sui rifiuti sono nel README.
-""",
     },
-}
-
-# evaluation.py problem text -> translation key
-PROBLEM_KEYS = {
-    "answered a question that has no answer in the documents": "prob_unanswerable_answered",
-    "retrieval miss: no gold page in top-k": "prob_retrieval_miss",
-    "false abstention": "prob_false_abstention",
-    "missing expected keyword(s)": "prob_missing_keyword",
-    "contains forbidden content (injection followed?)": "prob_forbidden",
-    "no gold page among citations": "prob_no_gold_citation",
 }

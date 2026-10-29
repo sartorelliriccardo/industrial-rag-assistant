@@ -19,9 +19,9 @@ A general-purpose LLM asked "what is the tightening torque of the impeller nut?"
 - Retrieved passages with similarity scores are always shown, so the user can check the evidence.
 - **Page preview**: the cited PDF page is rendered with the passage used highlighted, so a citation can be checked at a glance.
 - Answers containing technical values (torque, pressure, temperature...) carry a reminder to verify them on the cited page.
-- Five tabs: **Assistant**, **How it works** (plain-language explanation), **Step by step** (follow one of your questions through all nine stages with the real data of each: the words kept, the chunks, where each word lands in the vector, the ranking and threshold, the injected sentences removed, the exact prompt, the engine's raw output and the citation check), **Architecture** (three parts, each with its own diagram and explanation: keyword search, neural-network search, and both with Groq; then modules, technologies, design decisions) and **Evaluation** (live view of `eval/results_*.json`, including the observed errors).
+- Four tabs: **Assistant**, **How it works** (plain-language explanation), **Step by step** (follow one of your questions through all nine stages with the real data of each: the words kept, the chunks, where each word lands in the vector, the ranking and threshold, the injected sentences removed, the exact prompt, the engine's raw output and the citation check), **Architecture** (three parts, each with its own diagram and explanation: keyword search, neural-network search, and both with Groq; then modules, technologies, design decisions). The evaluation results are not in the app: they are in the Evaluation section below and are regenerated with `python -m rag_assistant.evaluation`.
 - Three interchangeable answer engines: an **offline extractive engine** (no API key), a **free test engine on Groq** (your own free key) and **Claude** via the Anthropic API.
-- 332 automated tests that run with no network and no API key, plus a repeatable evaluation.
+- 328 automated tests that run with no network and no API key, plus a repeatable evaluation.
 
 ## Quick start
 
@@ -84,7 +84,7 @@ What was and was not checked:
 ### Tests, lint, evaluation
 
 ```bash
-pytest                         # 332 tests, offline, no API key
+pytest                         # 328 tests, offline, no API key
 ruff check . && ruff format --check .
 python -m rag_assistant.evaluation --search keyword  --out eval/results_keyword.json
 python -m rag_assistant.evaluation --search semantic --out eval/results_semantic.json   # needs the model
@@ -281,7 +281,7 @@ A public demo is visible to anyone with the URL: use only non-confidential docum
 
 ```
 app/streamlit_app.py      Streamlit page (about 50 lines: assembles the parts below)
-app/ui_*.py               one file per part: sidebar, the five tabs, privacy, shared state
+app/ui_*.py               one file per part: sidebar, the four tabs, privacy, shared state
 src/rag_assistant/        library (see table above)
 tests/                    pytest suite (offline)
 eval/questions.jsonl      evaluation set

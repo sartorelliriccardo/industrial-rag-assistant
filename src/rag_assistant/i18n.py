@@ -1,6 +1,6 @@
 """UI strings in Italian and English. Add a language by adding a dict with the same keys."""
 
-from rag_assistant.i18n_content import CONTENT, PROBLEM_KEYS  # noqa: F401
+from rag_assistant.i18n_content import CONTENT
 from rag_assistant.i18n_walk import WALK
 
 LANGUAGES = {"it": "Italiano", "en": "English"}

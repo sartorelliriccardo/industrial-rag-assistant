@@ -98,7 +98,7 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 **Colloquio.** *Quanto è affidabile?* → "Su un benchmark piccolo e sintetico: ricerca hit@1 97%, risposte corrette 89%, rifiuti corretti 88% (con la ricerca per parole chiave; le domande le ho scritte io riusando parole dei manuali, quindi il confronto con la ricerca semantica non è equo). Non lo considero provato su documenti reali; ecco i limiti e gli errori osservati."
 
 ## 9. `app/` — l'interfaccia
-Il file `streamlit_app.py` (circa 50 righe) monta solo la pagina: legge le scelte della barra laterale, apre l'archivio della sessione e passa tutto alle cinque schede. Ogni parte sta in un file accanto, con un nome che dice cosa fa:
+Il file `streamlit_app.py` (circa 50 righe) monta solo la pagina: legge le scelte della barra laterale, apre l'archivio della sessione e passa tutto alle quattro schede. Ogni parte sta in un file accanto, con un nome che dice cosa fa:
 
 | File | Cosa contiene |
 |---|---|
@@ -106,7 +106,6 @@ Il file `streamlit_app.py` (circa 50 righe) monta solo la pagina: legge le scelt
 | `ui_assistant.py` | scheda *Assistente*: domanda, risposta, fonti, anteprima della pagina, passaggi |
 | `ui_walkthrough.py` | scheda *Passo per passo* (le nove fasi) |
 | `ui_architecture.py` | scheda *Architettura*: i due diagrammi |
-| `ui_evaluation.py` | scheda *Valutazione*: legge `eval/results_*.json` |
 | `ui_privacy.py` | password facoltativa, archivio per sessione, cancellazione dei file, cancellazione dopo inattività |
 | `ui_state.py` | cosa ricevono le schede (`Ctx`) e la creazione della pipeline |
 
@@ -114,12 +113,13 @@ Da presentare: il nucleo è in `src/rag_assistant/` (lettura, pezzi, indice, ric
 
 Barra laterale: lingua, metodo di ricerca, motore di risposta, parametri, conferma che i documenti non sono riservati, upload dei PDF, pulsante «Cancella ora». Streamlit rilancia lo script a ogni interazione, quindi i dati dell'utente non stanno nelle variabili dello script ma in un archivio per sessione (`workspace.py`), che li elimina pochi secondi dopo la chiusura della pagina. Il modello neurale (se scelto) sta in `st.cache_resource` e si carica una volta sola. Gli errori dei PDF e delle chiamate API sono mostrati senza far crollare la pagina.
 
-**Le cinque schede, e come usarle per spiegare il progetto.**
+**Le quattro schede, e come usarle per spiegare il progetto.**
 - *Assistente*: la domanda e la risposta con fonti, anteprima della pagina e passaggi.
 - *Come funziona*: la spiegazione in parole semplici, per chi non è tecnico.
 - *Passo per passo*: la scheda da usare in un colloquio. Scrivi una domanda e per ognuna delle nove fasi vedi i dati veri: le parole tenute (stemming), i pezzi, dove cade ogni parola nel vettore, la classifica con la soglia, le frasi nascoste rimosse, il prompt esatto, l'uscita grezza del motore e il controllo delle citazioni. Con il PDF che contiene la frase «ignore all previous instructions» si vede il filtro in azione.
 - *Architettura*: tre parti, ciascuna con il suo schema (ricerca per parole chiave, ricerca con la rete neurale, le due insieme a Groq), poi i moduli e le scelte.
-- *Valutazione*: i numeri e gli errori, compresi i limiti.
+
+I numeri della valutazione non stanno nell'app: sono nel README (sezione *Evaluation*) e si rigenerano con `python -m rag_assistant.evaluation`.
 
 **Colloquio.** *Mostrami come funziona.* → apri «Passo per passo» con una domanda e racconta le nove fasi seguendo lo schermo: è la dimostrazione che il sistema non è una scatola nera e che ogni numero può essere verificato.
 
@@ -129,4 +129,4 @@ Barra laterale: lingua, metodo di ricerca, motore di risposta, parametri, confer
 - **Perché senza LangChain?** Per capire e poter testare ogni componente; sono poche decine di righe ciascuno.
 - **Cosa miglioreresti per primo?** Un set di valutazione su documenti reali e separato da quello di taratura; poi ricerca ibrida (BM25 + vettori), re-ranking e OCR.
 - **Come gestisci chiavi e dati?** Chiavi solo in variabili d'ambiente o nella sessione; `.env` in `.gitignore`; i PDF restano in memoria e non vengono salvati.
-- **Come testi senza API?** `ScriptedProvider` nei test, `HashingEmbedder`, PDF generati al volo: 303 test offline.
+- **Come testi senza API?** `ScriptedProvider` nei test, `HashingEmbedder`, PDF generati al volo: 328 test offline.

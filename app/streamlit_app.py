@@ -2,8 +2,8 @@
 
 This file only assembles the page; each part lives in a file next to it:
   ui_sidebar       settings and upload          ui_assistant     ask and read the answer
-  ui_walkthrough   step by step                 ui_architecture  the two flows drawn
-  ui_evaluation    measured results             ui_privacy       password, session store, deletion
+  ui_walkthrough   step by step                 ui_architecture  the flows drawn
+  ui_privacy       password, session store, deletion
   ui_state         what every tab receives
 """
 
@@ -25,7 +25,6 @@ import streamlit as st
 from rag_assistant.i18n import t
 from ui_architecture import render_architecture
 from ui_assistant import render_assistant
-from ui_evaluation import render_evaluation
 from ui_privacy import IDLE_MINUTES, clear_documents, idle_guard, require_password
 from ui_sidebar import process_uploads, render_sidebar
 from ui_state import open_workspace
@@ -48,8 +47,8 @@ side.clear_slot.button(
 st.title(f"🏭 {t(ctx.lang, 'title')}")
 st.caption(t(ctx.lang, "subtitle"))
 
-tab_assistant, tab_about, tab_walk, tab_arch, tab_eval = st.tabs(
-    [t(ctx.lang, key) for key in ("tab_assistant", "tab_about", "tab_walk", "tab_arch", "tab_eval")]
+tab_assistant, tab_about, tab_walk, tab_arch = st.tabs(
+    [t(ctx.lang, key) for key in ("tab_assistant", "tab_about", "tab_walk", "tab_arch")]
 )
 with tab_assistant:
     render_assistant(ctx)
@@ -59,8 +58,6 @@ with tab_walk:
     render_walkthrough(ctx)
 with tab_arch:
     render_architecture(ctx.lang)
-with tab_eval:
-    render_evaluation(ctx.lang, ctx.search)
 
 if IDLE_MINUTES > 0:
     idle_guard(ctx.lang)
