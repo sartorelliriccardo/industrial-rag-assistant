@@ -22,6 +22,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "api_key_help": "Kept in memory only.",
         "engine_groq": "Free test engine (Groq, free key required)",
         "api_key_groq": "Groq API key",
+        "model_groq": "Groq model",
+        "model_groq_help": (
+            "Groq retires models from time to time. If the answer says 'model not found', the "
+            "error lists the models your key can use: copy one here."
+        ),
         "api_key_groq_help": "Kept in memory only. Create a free key at console.groq.com/keys.",
         "groq_privacy": (
             "With Groq, the passages found in your documents are sent to Groq's API to write "
@@ -96,6 +101,11 @@ STRINGS: dict[str, dict[str, str]] = {
         "api_key_help": "Resta solo in memoria.",
         "engine_groq": "Motore di prova gratuito (Groq, serve una chiave gratuita)",
         "api_key_groq": "Chiave API Groq",
+        "model_groq": "Modello Groq",
+        "model_groq_help": (
+            "Groq ritira dei modelli ogni tanto. Se la risposta dice «modello non trovato», "
+            "l'errore elenca i modelli che la tua chiave può usare: copiane uno qui."
+        ),
         "api_key_groq_help": "Resta solo in memoria. Crea una chiave gratuita su console.groq.com/keys.",
         "groq_privacy": (
             "Con Groq, i passaggi trovati nei tuoi documenti vengono inviati all'API di Groq "

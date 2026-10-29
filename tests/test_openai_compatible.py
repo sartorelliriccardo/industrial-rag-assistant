@@ -20,13 +20,30 @@ from rag_assistant.pipeline import RagPipeline
 class FakeHost:
     """A tiny HTTP server that records requests and replies with a scripted status and body."""
 
-    def __init__(self, status: int = 200, body: dict | None = None):
+    def __init__(
+        self, status: int = 200, body: dict | None = None, models: list[str] | None = None
+    ):
         self.status = status
         self.body = body if body is not None else completion("ok")
+        self.models = models  # ids offered by GET /models; None = the host has no such page
         self.requests: list[dict] = []
         host = self
 
         class Handler(BaseHTTPRequestHandler):
+            def do_GET(self):  # noqa: N802 (name fixed by the http.server API)
+                host.requests.append({"path": self.path, "auth": self.headers.get("Authorization")})
+                if host.models is None or not self.path.endswith("/models"):
+                    self.send_response(404)
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
+                payload = json.dumps({"data": [{"id": m} for m in host.models]}).encode("utf-8")
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(payload)))
+                self.end_headers()
+                self.wfile.write(payload)
+
             def do_POST(self):  # noqa: N802 (name fixed by the http.server API)
                 length = int(self.headers.get("Content-Length", 0))
                 host.requests.append(
@@ -108,6 +125,43 @@ def test_http_errors_become_readable_messages(status, expected):
     assert "secret-key" not in str(info.value)  # the key must never leak into a message
 
 
+def test_a_retired_model_lists_what_the_key_can_use():
+    """The real failure seen with Groq: HTTP 404 because the default model was shut down."""
+    body = {"error": {"message": "The model `old-model` does not exist or you do not have access"}}
+    offered = ["openai/gpt-oss-120b", "whisper-large-v3", "llama-guard-x", "openai/gpt-oss-20b"]
+    with FakeHost(status=404, body=body, models=offered) as host:
+        with pytest.raises(ProviderError) as info:
+            provider(host).complete("s", "u")
+    message = str(info.value)
+    assert 'The service says: "The model `old-model` does not exist' in message
+    assert "Models offered to this key: openai/gpt-oss-120b, openai/gpt-oss-20b." in message
+    assert "whisper" not in message and "guard" not in message  # not chat models
+    assert host.requests[-1]["auth"] == "Bearer secret-key"  # the listing used the same key
+
+
+def test_no_suggestions_when_the_host_cannot_list_models():
+    with FakeHost(status=404, body={"error": {"message": "gone"}}, models=None) as host:
+        with pytest.raises(ProviderError) as info:
+            provider(host).complete("s", "u")
+    assert "Models offered" not in str(info.value)
+    assert 'The service says: "gone"' in str(info.value)
+
+
+def test_server_messages_never_echo_the_key():
+    body = {"error": {"message": "bad key secret-key supplied"}}
+    with FakeHost(status=401, body=body) as host:
+        with pytest.raises(ProviderError) as info:
+            provider(host).complete("s", "u")
+    assert "secret-key" not in str(info.value)
+    assert "***" in str(info.value)
+
+
+def test_extra_body_fields_are_sent():
+    with FakeHost() as host:
+        provider(host, extra_body={"reasoning_effort": "low"}).complete("s", "u")
+    assert host.requests[0]["json"]["reasoning_effort"] == "low"
+
+
 def test_unreachable_host_is_reported():
     # nothing listens on this port
     p = OpenAICompatibleProvider("k", "http://127.0.0.1:9/v1", "m", name="fake", timeout=2)
@@ -144,16 +198,26 @@ def test_groq_defaults_and_environment(monkeypatch):
         GroqProvider()
     p = GroqProvider(api_key="k")
     assert p.base_url == "https://api.groq.com/openai/v1"
-    assert p.model == "llama-3.3-70b-versatile"
+    assert p.model == "openai/gpt-oss-120b"  # llama-3.3-70b-versatile was shut down by Groq
+    assert p.model != "llama-3.3-70b-versatile"
     monkeypatch.setenv("GROQ_API_KEY", "from-env")
     monkeypatch.setenv("GROQ_MODEL", "another-model")
     p = GroqProvider()
     assert (p.api_key, p.model) == ("from-env", "another-model")
+    assert GroqProvider(api_key="k", model="chosen/in-the-box").model == "chosen/in-the-box"
+
+
+def test_groq_keeps_gpt_oss_reasoning_short_and_leaves_other_models_alone():
+    thinking = GroqProvider(api_key="k", model="openai/gpt-oss-20b")
+    assert thinking.extra_body == {"reasoning_effort": "low", "include_reasoning": False}
+    assert thinking.max_tokens == 1500  # room for the answer after a little reasoning
+    assert GroqProvider(api_key="k", model="some/other-model").extra_body == {}
 
 
 def test_get_provider_knows_groq(monkeypatch):
     monkeypatch.delenv("GROQ_API_KEY", raising=False)
     assert isinstance(get_provider("groq", "k"), GroqProvider)
+    assert get_provider("groq", "k", "my/model").model == "my/model"
     with pytest.raises(ValueError):  # the sidebar relies on this to ask for a key
         get_provider("groq", None)
     with pytest.raises(ValueError, match="groq"):

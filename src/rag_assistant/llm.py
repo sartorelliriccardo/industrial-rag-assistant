@@ -72,6 +72,7 @@ class OpenAICompatibleProvider:
         name: str = "openai-compatible",
         max_tokens: int = 700,
         timeout: float = 60.0,
+        extra_body: dict | None = None,
     ):
         if not api_key:
             raise ValueError(f"{name}: an API key is required")
@@ -81,20 +82,21 @@ class OpenAICompatibleProvider:
         self.name = name
         self.max_tokens = max_tokens
         self.timeout = timeout
+        self.extra_body = dict(extra_body or {})  # host-specific request fields
 
     def complete(self, system: str, user: str) -> str:
         enable_system_certificates()
-        body = json.dumps(
-            {
-                "model": self.model,
-                "temperature": 0,
-                "max_completion_tokens": self.max_tokens,
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-            }
-        ).encode("utf-8")
+        payload = {
+            "model": self.model,
+            "temperature": 0,
+            "max_completion_tokens": self.max_tokens,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            **self.extra_body,
+        }
+        body = json.dumps(payload).encode("utf-8")
         request = urllib.request.Request(
             f"{self.base_url}/chat/completions",
             data=body,
@@ -108,14 +110,13 @@ class OpenAICompatibleProvider:
         )
         try:
             with urllib.request.urlopen(request, timeout=self.timeout) as response:
-                payload = json.load(response)
+                reply = json.load(response)
         except urllib.error.HTTPError as exc:
-            detail = self.HINTS.get(exc.code, "the request failed")
-            raise ProviderError(f"{self.name}: HTTP {exc.code}, {detail}") from exc
+            raise ProviderError(self._http_error_message(exc)) from exc
         except (urllib.error.URLError, TimeoutError) as exc:
             raise ProviderError(f"{self.name}: cannot reach the service ({exc})") from exc
         try:
-            text = payload["choices"][0]["message"]["content"]
+            text = reply["choices"][0]["message"]["content"]
         except (KeyError, IndexError, TypeError) as exc:
             raise ProviderError(f"{self.name}: unexpected response from the service") from exc
         if not text or not text.strip():
@@ -125,16 +126,56 @@ class OpenAICompatibleProvider:
             )
         return text.strip()
 
+    def _http_error_message(self, exc: urllib.error.HTTPError) -> str:
+        message = f"{self.name}: HTTP {exc.code}, {self.HINTS.get(exc.code, 'the request failed')}"
+        said = self._server_message(exc)
+        if said:
+            message += f' The service says: "{said}"'
+        if exc.code in (400, 404):  # usually a model that was renamed or shut down
+            models = self.available_models()
+            if models:
+                message += f" Models offered to this key: {', '.join(models)}."
+        return message
+
+    def _server_message(self, exc: urllib.error.HTTPError) -> str:
+        try:
+            text = str(json.load(exc)["error"]["message"])
+        except Exception:  # the body is not the expected JSON: nothing to add
+            return ""
+        return " ".join(text.replace(self.api_key, "***").split())[:200]
+
+    def available_models(self) -> list[str]:
+        """Chat models this key can use (an empty list if the host does not say)."""
+        request = urllib.request.Request(
+            f"{self.base_url}/models",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "User-Agent": "industrial-rag-assistant",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                ids = [str(item["id"]) for item in json.load(response)["data"]]
+        except Exception:  # any failure just means "no suggestions"
+            return []
+        not_chat = ("whisper", "orpheus", "tts", "guard", "embed")
+        return sorted(i for i in ids if not any(word in i.lower() for word in not_chat))[:15]
+
 
 class GroqProvider(OpenAICompatibleProvider):
     """Groq: free plan for tests (limits shown in the Groq console), key from console.groq.com."""
 
     def __init__(self, api_key: str | None = None, model: str | None = None):
+        chosen = model or os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL)
+        # gpt-oss models reason before answering: keep that short so the answer fits the budget
+        thinking = {"reasoning_effort": "low", "include_reasoning": False}
         super().__init__(
             api_key=api_key or os.environ.get("GROQ_API_KEY"),
             base_url=os.environ.get("GROQ_BASE_URL", GROQ_BASE_URL),
-            model=model or os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL),
+            model=chosen,
             name="groq",
+            max_tokens=1500,
+            extra_body=thinking if chosen.startswith("openai/gpt-oss") else None,
         )
 
 
@@ -204,11 +245,11 @@ class ExtractiveProvider:
         return " ".join(quotes)
 
 
-def get_provider(name: str, api_key: str | None = None) -> LLMProvider:
+def get_provider(name: str, api_key: str | None = None, model: str | None = None) -> LLMProvider:
     if name == "extractive":
         return ExtractiveProvider()
     if name == "anthropic":
         return AnthropicProvider(api_key=api_key)
     if name == "groq":
-        return GroqProvider(api_key=api_key)
+        return GroqProvider(api_key=api_key, model=model)
     raise ValueError(f"unknown LLM provider: {name!r} (use 'extractive', 'groq' or 'anthropic')")

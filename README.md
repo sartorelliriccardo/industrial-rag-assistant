@@ -21,7 +21,7 @@ A general-purpose LLM asked "what is the tightening torque of the impeller nut?"
 - Answers containing technical values (torque, pressure, temperature...) carry a reminder to verify them on the cited page.
 - Five tabs: **Assistant**, **How it works** (plain-language explanation), **Step by step** (follow one of your questions through all nine stages with the real data of each: the words kept, the chunks, where each word lands in the vector, the ranking and threshold, the injected sentences removed, the exact prompt, the engine's raw output and the citation check), **Architecture** (two-flow diagram, modules, technologies, design decisions) and **Evaluation** (live view of `eval/results_*.json`, including the observed errors).
 - Three interchangeable answer engines: an **offline extractive engine** (no API key), a **free test engine on Groq** (your own free key) and **Claude** via the Anthropic API.
-- 325 automated tests that run with no network and no API key, plus a repeatable evaluation.
+- 332 automated tests that run with no network and no API key, plus a repeatable evaluation.
 
 ## Quick start
 
@@ -58,11 +58,11 @@ The Claude engine is implemented and unit-tested against a fake provider, but **
 
 ### Trying a language model for free (Groq)
 
-Choose **Free test engine (Groq)** in the sidebar and paste a free key from [console.groq.com/keys](https://console.groq.com/keys), or set `GROQ_API_KEY` in the environment. The model is `llama-3.3-70b-versatile` (a production model in Groq's docs on 29 Oct 2026); change it with `GROQ_MODEL`. The code speaks the standard OpenAI chat dialect (`llm.py`, `OpenAICompatibleProvider`), so another host that offers it only needs a base URL and a key.
+Choose **Free test engine (Groq)** in the sidebar and paste a free key from [console.groq.com/keys](https://console.groq.com/keys), or set `GROQ_API_KEY` in the environment. The default model is `openai/gpt-oss-120b`; change it in the sidebar box or with `GROQ_MODEL`. **Groq retires models**: my first default, `llama-3.3-70b-versatile`, was shut down on 16 Aug 2026 (Groq's deprecations page) and the first live try failed with `HTTP 404`. On a 404 or 400 the error now quotes the service's own message and lists the models your key can use. The code speaks the standard OpenAI chat dialect (`llm.py`, `OpenAICompatibleProvider`), so another host that offers it only needs a base URL and a key.
 
 What was and was not checked:
 
-- **Checked on Groq's official pages:** the endpoint (`https://api.groq.com/openai/v1/chat/completions`), bearer authentication, the model list and that limits apply per organization. Its free-plan numbers are only visible in the Groq console, so the free limits are **not** known here. Earlier in this project Groq's published terms were read as: no retention of prompts by default and no training on customer data.
+- **Checked on Groq's official pages:** the endpoint (`https://api.groq.com/openai/v1/chat/completions`), bearer authentication, the model list and deprecations, `reasoning_effort` and `include_reasoning` for the gpt-oss models (sent as `low` and `false` so the answer fits the token budget) and that limits apply per organization. Whether a free plan can use `gpt-oss-120b` is not shown there. Its free-plan numbers are only visible in the Groq console, so the free limits are **not** known here. Earlier in this project Groq's published terms were read as: no retention of prompts by default and no training on customer data.
 - **Why only Groq:** on the pages I read, OpenRouter's free models may be served by providers that train on prompts, Mistral's free "Experiment" plan may use requests to train its models, and, according to summaries of Google's terms (the official page would not open for me), the free Gemini tier is not meant for an app offered to people in the EEA. For company manuals those are poor defaults.
 - **Tested offline** against a fake local server (request shape, errors, citation verification). **Not tested against the live service**: that needs your own key, which I never see.
 - The passages found in your documents leave the server for Groq, as with Claude. The sidebar says so.
@@ -70,7 +70,7 @@ What was and was not checked:
 ### Tests, lint, evaluation
 
 ```bash
-pytest                         # 325 tests, offline, no API key
+pytest                         # 332 tests, offline, no API key
 ruff check . && ruff format --check .
 python -m rag_assistant.evaluation --search keyword  --out eval/results_keyword.json
 python -m rag_assistant.evaluation --search semantic --out eval/results_semantic.json   # needs the model

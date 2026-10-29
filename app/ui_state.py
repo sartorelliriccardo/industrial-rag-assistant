@@ -22,13 +22,15 @@ def min_score_for(search: str) -> float:
     return st.session_state.get(f"min_score_{search}", MIN_SCORE_BY_SEARCH[search])
 
 
-def new_pipeline(search: str, provider_name: str, api_key: str | None) -> RagPipeline:
+def new_pipeline(
+    search: str, provider_name: str, api_key: str | None, model: str | None = None
+) -> RagPipeline:
     size, overlap = get_chunk_settings()
     # keyword search needs no model (a few MB); semantic search loads ~400 MB of weights
     embedder = LexicalEmbedder() if search == "keyword" else get_embedder()
     return RagPipeline(
         embedder,
-        get_provider(provider_name, api_key),
+        get_provider(provider_name, api_key, model),
         chunk_size=st.session_state.get("chunk_size", size),
         chunk_overlap=st.session_state.get("chunk_overlap", overlap),
         top_k=st.session_state.get("top_k", DEFAULT_TOP_K),
@@ -52,14 +54,16 @@ class Ctx:
         self.pipeline.min_score = min_score_for(self.search)
 
 
-def open_workspace(lang: str, search: str, provider_name: str, api_key: str | None) -> Ctx:
+def open_workspace(
+    lang: str, search: str, provider_name: str, api_key: str | None, model: str | None = None
+) -> Ctx:
     """This session's pipeline and files; the pipeline is rebuilt only if the settings changed."""
-    config_key = (search, provider_name, api_key)
+    config_key = (search, provider_name, api_key, model)
     ws = workspace()
     if ws.pipeline is None or ws.config_key != config_key:
         previous = dict(ws.files)
         try:
-            ws.pipeline = new_pipeline(search, provider_name, api_key or None)
+            ws.pipeline = new_pipeline(search, provider_name, api_key or None, model or None)
             ws.config_key = config_key
             ws.files = {}
             for name, data in previous.items():  # re-index when only the engine changed

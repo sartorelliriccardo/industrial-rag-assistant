@@ -38,7 +38,7 @@ st.session_state.last_active = time.time()  # every full run is a user action
 
 # ---------------------------------------------------------------- settings, documents
 side = render_sidebar()
-ctx = open_workspace(side.lang, side.search, side.provider_name, side.api_key)
+ctx = open_workspace(side.lang, side.search, side.provider_name, side.api_key, side.model)
 process_uploads(ctx, side.uploads)  # indexes new PDFs, then reruns the script
 side.clear_slot.button(
     t(ctx.lang, "clear_all"), on_click=clear_documents, args=(ctx.lang,), disabled=not ctx.files

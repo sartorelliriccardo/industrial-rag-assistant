@@ -1,11 +1,17 @@
 """The left sidebar: language, search method, answer engine, parameters and the upload."""
 
+import os
 from dataclasses import dataclass
 from typing import Any
 
 import streamlit as st
 
-from rag_assistant.config import DEFAULT_TOP_K, MIN_SCORE_BY_SEARCH, get_chunk_settings
+from rag_assistant.config import (
+    DEFAULT_GROQ_MODEL,
+    DEFAULT_TOP_K,
+    MIN_SCORE_BY_SEARCH,
+    get_chunk_settings,
+)
 from rag_assistant.i18n import DEFAULT_LANGUAGE, LANGUAGES, t
 from rag_assistant.pdf_loader import (
     PdfCorruptedError,
@@ -42,6 +48,7 @@ class Sidebar:
     search: str
     provider_name: str
     api_key: str | None
+    model: str | None  # only chosen for the Groq engine; None means "the engine's default"
     uploads: list | None
     clear_slot: Any  # placeholder for the "delete all" button, filled once uploads are handled
 
@@ -71,10 +78,16 @@ def render_sidebar() -> Sidebar:
             format_func=lambda x: t(lang, f"engine_{x}"),
         )
         api_key = None
+        model = None
         if provider_name == "groq":
             api_key = st.text_input(
                 t(lang, "api_key_groq"), type="password", help=t(lang, "api_key_groq_help")
             )
+            model = st.text_input(
+                t(lang, "model_groq"),
+                value=os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL),
+                help=t(lang, "model_groq_help"),
+            ).strip()
             st.warning(t(lang, "groq_privacy"))
         elif provider_name == "anthropic":
             api_key = st.text_input(
@@ -113,7 +126,7 @@ def render_sidebar() -> Sidebar:
         st.caption(t(lang, "privacy"))
         if IDLE_MINUTES > 0:
             st.caption(t(lang, "idle_note", minutes=f"{IDLE_MINUTES:g}"))
-    return Sidebar(lang, search, provider_name, api_key, uploads, clear_slot)
+    return Sidebar(lang, search, provider_name, api_key, model, uploads, clear_slot)
 
 
 def add_file(ctx: Ctx, name: str, data: bytes) -> None:
