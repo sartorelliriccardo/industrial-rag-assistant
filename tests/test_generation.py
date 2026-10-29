@@ -19,6 +19,45 @@ def test_citation_to_nonexistent_source_is_reported_not_trusted():
     assert len(answer.citations) == 1
 
 
+def test_fullwidth_citations_from_gpt_oss_are_recognised():
+    """The real failure: a correct, cited answer was flagged unverifiable because the model
+    wrote 【S3】 instead of [S3]."""
+    ev = [
+        retrieved("Wash new sponge cloths.", doc="manual.pdf", page=24, rank=1),
+        retrieved("Do not put it in the dishwasher.", doc="manual.pdf", page=25, rank=2),
+    ]
+    reply = "Wash the cloths first【S1】. Not in the dishwasher【S1】【S2】."
+    answer = generate_answer("how to clean?", ev, ScriptedProvider(reply), min_score=0.2)
+    assert answer.status == "answered"
+    assert [c.page_number for c in answer.citations] == [24, 25]
+    assert "【" not in answer.text and "[manual.pdf, p. 24]" in answer.text
+    assert answer.raw == reply  # the model's own wording is kept for the walkthrough
+
+
+def test_citation_lists_and_daggers_are_recognised():
+    ev = [retrieved("a", page=1, rank=1), retrieved("b", page=2, rank=2)]
+    answer = generate_answer("q", ev, ScriptedProvider("One [S1, S2]. Two 【S2†source】."), 0.2)
+    assert answer.status == "answered"
+    assert [c.source_id for c in answer.citations] == ["S1", "S2"]
+
+
+def test_an_invented_source_in_the_other_style_is_still_reported():
+    answer = generate_answer("q", [retrieved("a")], ScriptedProvider("Yes 【S1】 and 【S9】."), 0.2)
+    assert answer.invalid_citations == ["S9"]
+    assert len(answer.citations) == 1
+
+
+def test_normalize_citations_leaves_other_text_alone():
+    from rag_assistant.prompts import normalize_citations
+
+    assert normalize_citations("【S3】") == "[S3]"
+    assert normalize_citations("[S1, S2; S3]") == "[S1][S2][S3]"
+    assert normalize_citations("plain [S1][S2] and [note] and (S4)") == (
+        "plain [S1][S2] and [note] and (S4)"
+    )
+    assert normalize_citations("【not a source】") == "【not a source】"
+
+
 def test_answer_without_any_citation_is_marked_uncited():
     answer = generate_answer("q", [retrieved("x")], ScriptedProvider("It is 120 N.m."), 0.2)
     assert answer.status == "uncited"

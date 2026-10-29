@@ -10,6 +10,7 @@ from rag_assistant.prompts import (
     INSUFFICIENT_TOKEN,
     SYSTEM_PROMPT,
     escape_source_text,
+    normalize_citations,
     strip_injected_sentences,
 )
 
@@ -74,10 +75,11 @@ def generate_answer(
             engine_called=True,
         )
 
+    cited = normalize_citations(raw)  # `raw` stays as the model wrote it, for the walkthrough
     citations: list[Citation] = []
     invalid: list[str] = []
     seen: set[str] = set()
-    for source_id in CITATION_RE.findall(raw):
+    for source_id in CITATION_RE.findall(cited):
         if source_id in seen:
             continue
         seen.add(source_id)
@@ -90,7 +92,7 @@ def generate_answer(
 
     return Answer(
         status="answered" if citations else "uncited",
-        text=_render_citations(raw, citations),
+        text=_render_citations(cited, citations),
         citations=citations,
         evidence=evidence,
         flagged=flagged,
