@@ -41,6 +41,16 @@ def test_citation_lists_and_daggers_are_recognised():
     assert [c.source_id for c in answer.citations] == ["S1", "S2"]
 
 
+def test_citations_with_spaces_inside_the_brackets_are_recognised():
+    """Seen live: gpt-oss wrote "[ S3 ]" and the answer was flagged as unverifiable."""
+    ev = [retrieved("a", page=1, rank=1), retrieved("b", page=2, rank=2)]
+    reply = "Steps one to six. [ S2 ] The program lasts 21 minutes [ S1 ][ S2 ]."
+    answer = generate_answer("q", ev, ScriptedProvider(reply), 0.2)
+    assert answer.status == "answered"
+    assert sorted(c.source_id for c in answer.citations) == ["S1", "S2"]
+    assert "[ S" not in answer.text
+
+
 def test_an_invented_source_in_the_other_style_is_still_reported():
     answer = generate_answer("q", [retrieved("a")], ScriptedProvider("Yes 【S1】 and 【S9】."), 0.2)
     assert answer.invalid_citations == ["S9"]

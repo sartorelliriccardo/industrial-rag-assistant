@@ -64,7 +64,21 @@ What was and was not checked:
 
 - **Checked on Groq's official pages:** the endpoint (`https://api.groq.com/openai/v1/chat/completions`), bearer authentication, the model list and deprecations, `reasoning_effort` and `include_reasoning` for the gpt-oss models (sent as `low` and `false` so the answer fits the token budget) and that limits apply per organization. Whether a free plan can use `gpt-oss-120b` is not shown there. Its free-plan numbers are only visible in the Groq console, so the free limits are **not** known here. Earlier in this project Groq's published terms were read as: no retention of prompts by default and no training on customer data.
 - **Why only Groq:** on the pages I read, OpenRouter's free models may be served by providers that train on prompts, Mistral's free "Experiment" plan may use requests to train its models, and, according to summaries of Google's terms (the official page would not open for me), the free Gemini tier is not meant for an app offered to people in the EEA. For company manuals those are poor defaults.
-- **Tested offline** against a fake local server (request shape, errors, citation verification). **Not tested against the live service**: that needs your own key, which I never see.
+- **Tested offline** against a fake local server (request shape, errors, citation verification), and **once live** on 29 Oct 2026 (below).
+
+#### One live run: a coffee-machine manual, `openai/gpt-oss-120b` on Groq's free plan
+
+40-page Italian operator's manual of an automatic coffee machine (not in this repository), 12 questions I wrote with the facts a good answer needs, plus 3 questions it does not cover. Same questions, same code, only the search changes. Answers graded by me, reading each one against the manual text.
+
+| | Offline engine, keyword | Offline engine, neural | Groq, keyword | Groq, neural |
+|---|---|---|---|---|
+| Useful answers (12) | 5 | 2 | **10** | 7 (+2 partly right) |
+| Out-of-manual questions refused (3) | 3 | 3 | 3 | 3 |
+
+- **A language model fixes most of the answering problem** (5 → 10 with keyword search). Neural search still trails keyword search here, as the evidence it hands to the model predicted (right page in the passages: 8 of 12 against 11 of 12).
+- **Failures worth knowing:** "which milk?" got a confident, cited but irrelevant answer (the right passage was never retrieved and the model did not refuse); another answer turned "the insulated container keeps cold milk cold for a few hours" into advice to leave milk in the fridge for hours; a correct 21-minute answer added a false "contradiction" with a 19-minute phase; keyword search refused "how much does it weigh?" and neural search refused two questions that keyword search answered.
+- **Two citation styles the checker did not understand** (`【S3】` and `[ S3 ]`) made correct, cited answers look unverifiable until they were fixed; both are now normalised and tested.
+- **Not checked:** one manual, my own questions, one run (the model is not fully deterministic), and the free plan hit its rate limit 4 times in 30 calls, which the app reports as an error without retrying.
 - The passages found in your documents leave the server for Groq, as with Claude. The sidebar says so.
 
 ### Tests, lint, evaluation

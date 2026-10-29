@@ -29,6 +29,7 @@ CITATION_RE = re.compile(r"\[(S\d+)\]")
 # 【S3†source】) and several models write [S1, S2]. Both are rewritten to [S1][S2] before checking.
 FULLWIDTH_CITATION_RE = re.compile(r"【\s*(S\d+)[^】]*】")
 LIST_CITATION_RE = re.compile(r"\[\s*(S\d+(?:\s*[,;]\s*S\d+)+)\s*\]")
+SPACED_CITATION_RE = re.compile(r"\[\s*(S\d+)\s*\]")  # "[ S3 ]", seen from gpt-oss on Groq
 
 # Patterns typical of prompt-injection attempts hidden in documents.
 INJECTION_PATTERNS = [
@@ -48,11 +49,12 @@ SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+(?=[A-Z0-9\[])")
 
 
 def normalize_citations(text: str) -> str:
-    """Rewrite 【S3】 and [S1, S2] as [S3] and [S1][S2], the only form the checker reads."""
+    """Rewrite 【S3】, [ S3 ] and [S1, S2] as [S3] and [S1][S2], the only form the checker reads."""
     text = FULLWIDTH_CITATION_RE.sub(r"[\1]", text)
-    return LIST_CITATION_RE.sub(
+    text = LIST_CITATION_RE.sub(
         lambda match: "".join(f"[{i}]" for i in re.findall(r"S\d+", match.group(1))), text
     )
+    return SPACED_CITATION_RE.sub(r"[\1]", text)
 
 
 def looks_like_injection(text: str) -> bool:

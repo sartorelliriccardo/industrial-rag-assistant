@@ -36,7 +36,7 @@ A tool that answers questions about your technical manuals (PDF) and **always sh
 
 ### Three ways to answer
 - **Offline (default):** copies the best-matching sentences from the manual. Free, no account needed.
-- **Free test engine (Groq, optional):** a real language model writes the answer from the passages found. You need your own free key from Groq; the passages leave the server. Not tested against the live service yet.
+- **Free test engine (Groq, optional):** a real language model writes the answer from the passages found. You need your own free key from Groq; the passages leave the server. Tried once on one real manual: it answered 10 of 12 questions usefully with keyword search (see the README), but it can still answer wrongly with confidence when the right passage was not found.
 - **Claude (optional):** writes a more natural answer, using your own API key. Not tested yet in this project.
 
 ### Search "by meaning" (the neural part)
@@ -182,7 +182,7 @@ Uno strumento che risponde a domande sui tuoi manuali tecnici (PDF) e **mostra s
 
 ### Tre modi di rispondere
 - **Offline (predefinito):** copia dal manuale le frasi che meglio corrispondono. Gratis, senza account.
-- **Motore di prova gratuito (Groq, opzionale):** un vero modello linguistico scrive la risposta dai passaggi trovati. Serve una tua chiave gratuita di Groq; i passaggi escono dal server. Non ancora provato sul servizio vero.
+- **Motore di prova gratuito (Groq, opzionale):** un vero modello linguistico scrive la risposta dai passaggi trovati. Serve una tua chiave gratuita di Groq; i passaggi escono dal server. Provato una volta su un manuale vero: con la ricerca per parole chiave ha risposto bene a 10 domande su 12 (vedi il README), ma può comunque rispondere in modo sbagliato e sicuro quando il passaggio giusto non è stato trovato.
 - **Claude (opzionale):** scrive una risposta più naturale, con la tua chiave API. In questo progetto non è ancora stato provato.
 
 ### La ricerca «per significato» (la parte neurale)
