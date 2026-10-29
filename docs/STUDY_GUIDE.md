@@ -67,7 +67,7 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 4. L'LLM risponde citando `[S1]`. Il codice **verifica** ogni id: se esiste lo traduce in "documento, p. N"; se non esiste lo segnala; una risposta senza citazioni valide è marcata "uncited".
 5. Se il modello scrive `INSUFFICIENT_EVIDENCE`, la risposta è "informazioni insufficienti".
 
-**Prompt injection.** Un PDF può contenere frasi come "ignora le istruzioni precedenti". Difese a più livelli: filtro delle frasi, regola nel prompt, escape dei caratteri `<` `>` (un documento non può chiudere il tag e inventare fonti), verifica delle citazioni. Non si elimina il rischio, lo si riduce: è nei limiti del README.
+**Prompt injection.** Un PDF può contenere frasi come "ignora le istruzioni precedenti". Difese a più livelli: filtro delle frasi, regola nel prompt, escape dei caratteri `<` `>` (un documento non può chiudere il tag e inventare fonti), verifica delle citazioni. Non si elimina il rischio, lo si riduce: è nei limiti, in README e docs/DETAILS.md.
 
 **Conflitti.** Il prompt chiede di riportare entrambi i valori con le citazioni; nei dati di esempio il datasheet Rev A dice 12 bar, il manuale Rev C 10 bar.
 
@@ -90,7 +90,7 @@ Flusso in una riga: `PDF → pagine → chunk → vettori → indice FAISS → r
 
 **Cosa abbiamo imparato** (è la parte più utile da raccontare):
 - La similarità vettoriale **non** distingue "nessuna risposta" da "risposta": una domanda sullo stesso argomento ma su un dato assente ottiene punteggi alti. La soglia sul punteggio ferma solo le domande fuori tema.
-- C'è un compromesso tra rifiutare troppo e rifiutare troppo poco: la tabella nel README mostra la curva. In ambito manutenzione un rifiuto costa meno di una risposta sbagliata.
+- C'è un compromesso tra rifiutare troppo e rifiutare troppo poco: la tabella in docs/DETAILS.md mostra la curva. In ambito manutenzione un rifiuto costa meno di una risposta sbagliata.
 - Un bug trovato dalla valutazione: scartare un intero passaggio per una frase iniettata eliminava anche fatti validi. Corretto rimuovendo solo la frase sospetta.
 
 **Onestà sui limiti.** 43 domande, 11 chunk, soglie tarate sulle stesse domande: i numeri non dimostrano affidabilità su manuali reali. Claude via API non è stato valutato.
@@ -119,7 +119,7 @@ Barra laterale: lingua, metodo di ricerca, motore di risposta, parametri, confer
 - *Passo per passo*: la scheda da usare in un colloquio. Scrivi una domanda e per ognuna delle nove fasi vedi i dati veri: le parole tenute (stemming), i pezzi, dove cade ogni parola nel vettore, la classifica con la soglia, le frasi nascoste rimosse, il prompt esatto, l'uscita grezza del motore e il controllo delle citazioni. Con il PDF che contiene la frase «ignore all previous instructions» si vede il filtro in azione.
 - *Architettura*: tre parti, ciascuna con il suo schema (ricerca per parole chiave, ricerca con la rete neurale, le due insieme a Groq), poi i moduli e le scelte.
 
-I numeri della valutazione non stanno nell'app: sono nel README (sezione *Evaluation*) e si rigenerano con `python -m rag_assistant.evaluation`.
+I numeri della valutazione non stanno nell'app: sono riassunti nel README e per intero in docs/DETAILS.md, e si rigenerano con `python -m rag_assistant.evaluation`.
 
 **Colloquio.** *Mostrami come funziona.* → apri «Passo per passo» con una domanda e racconta le nove fasi seguendo lo schermo: è la dimostrazione che il sistema non è una scatola nera e che ogni numero può essere verificato.
 

@@ -1,0 +1,220 @@
+# Details: modules, design, evaluation, privacy
+
+Everything the [README](../README.md) summarises, in full. Written in English; the Italian study guide is [STUDY_GUIDE.md](STUDY_GUIDE.md).
+
+Contents: [Setup notes](#setup-notes) · [Modules](#modules) · [Design decisions](#design-decisions) · [Evaluation on synthetic documents](#evaluation-on-synthetic-documents) · [Hard questions and the Ctrl+F baseline](#hard-questions-and-the-ctrlf-baseline) · [Tried on a real manual (dental unit)](#tried-on-a-real-manual-dental-unit) · [Groq: what was checked, and one live run](#groq-what-was-checked-and-one-live-run) · [Limitations](#limitations-please-read) · [Privacy and data handling](#privacy-and-data-handling) · [Deploying a public demo](#deploying-a-public-demo-on-streamlit-community-cloud)
+
+## Setup notes
+
+The default **keyword search** needs no download. The optional **semantic search** downloads an embedding model (~120 MB, 8-bit quantised) from Hugging Face on first use. Behind a corporate proxy that re-signs TLS traffic and shows `CERTIFICATE_VERIFY_FAILED`, run `pip install -e ".[corp]"`: the app then uses the operating-system certificate store.
+
+### Using Claude instead of the offline engine
+
+Choose **Claude** in the sidebar and paste an API key (kept in memory only), or set it in the environment:
+
+```bash
+cp .env.example .env        # then edit .env; .env is git-ignored
+export ANTHROPIC_API_KEY=...   # PowerShell: $env:ANTHROPIC_API_KEY="..."
+```
+
+The Claude engine is implemented and unit-tested against a fake provider, but **it has not been evaluated against the live API** in this repository's results (see Limitations below).
+
+## Modules
+
+| Module | Responsibility |
+|---|---|
+| `pdf_loader.py` | PDF bytes → pages; typed errors for empty / corrupted / password-protected / text-less PDFs |
+| `chunking.py` | Sliding window with overlap, cut on whitespace, never crossing a page boundary |
+| `textutil.py` | Stopwords, a crude prefix stemmer shared by keyword search and the offline engine, and the table-of-contents page detector |
+| `embeddings.py` | `Embedder` protocol; `LexicalEmbedder` (keywords weighted by rarity, default), `FastEmbedEmbedder` (neural), `HashingEmbedder` (deterministic, for tests) |
+| `index.py` | FAISS `IndexFlatIP` over unit vectors (inner product = cosine); add / remove document |
+| `retrieval.py` | Question → top-k chunks with rank and score |
+| `prompts.py` | System rules, source format, injection patterns |
+| `llm.py` | `LLMProvider` protocol; `AnthropicProvider`, `ExtractiveProvider` |
+| `generation.py` | Evidence selection, prompt building, citation verification |
+| `pipeline.py` | Facade used by the UI and the evaluation; leaves index pages out and refits the keyword weights when documents are added or removed |
+| `i18n.py`, `i18n_content.py` | Italian / English interface strings (a test checks both languages have the same keys) |
+| `preview.py` | Renders a cited PDF page with the used sentences highlighted |
+| `walkthrough.py` | Runs one question through the real pipeline and records what each stage produced (feeds the "Step by step" tab; reuses the same functions as `ask`, so nothing is re-implemented) |
+| `workspace.py` | Per-session store of the uploaded PDFs and the search index; discards a session's data shortly after it disconnects |
+| `session.py` | Idle expiry and optional-password helpers (UI-independent, unit-tested) |
+| `evaluation.py` | Repeatable evaluation with four separate metrics |
+
+## Design decisions
+
+- **No RAG framework.** Each step is ~30–60 lines you can read and test. Abstractions can come later.
+- **Citations are verified, not trusted.** The model sees sources labelled `S1…Sn` and cites those ids. The code maps each id back to the real document/page and reports ids that do not exist; an answer with no valid citation is flagged as unverifiable.
+- **Chunks never cross pages**, so a citation is always exact.
+- **Exact search (`IndexFlatIP`).** For a few thousand chunks, approximate indexes add complexity and no benefit.
+- **Keyword search is the default; neural search is optional.** The first public deployment on Streamlit Community Cloud crashed with "resource limits" while using a neural embedding model. Measured locally (Windows): the full-precision multilingual model costs ~560 MB and the process ~790 MB; an 8-bit quantised export of the same model brings the whole app to 636 MB (embeddings close to the original, mean cosine 0.994 on a small sample, but retrieval slightly worse). Streamlit's [documentation](https://docs.streamlit.io/deploy/streamlit-community-cloud/manage-your-app) lists a **guaranteed minimum of 690 MB** per app (maximum 2.7 GB, subject to change), so even the quantised model sat on the edge. Keyword search (stemmed words hashed into a vector, no model) uses ~225 MB for the whole app. The neural mode is still selectable in the app, but on the free public server it sits at the edge of the guaranteed memory, and if memory runs out the whole app stops; `FastEmbedEmbedder(quantized=False)` gives the original model.
+- **Provider interface** (`complete(system, user) -> str`): swapping vendor means writing one small class.
+- **Offline extractive engine.** Deterministic, always grounded (it only copies sentences from the sources), keyless: it makes the demo, the tests and the evaluation reproducible, and gives a baseline to compare a real LLM against.
+- **Prompt-injection handling is layered**: (1) suspicious sentences are removed before prompting and the user gets a warning; (2) the system prompt declares source text untrusted; (3) sources are escaped so a document cannot close the `<source>` tag; (4) citations are verified afterwards. This reduces the risk; it does not eliminate it.
+
+## Evaluation on synthetic documents
+
+43 questions over 4 synthetic documents (`data/sample_pdfs/`, generated by `scripts/make_sample_pdfs.py`): 35 answerable and 8 not answerable. Categories: factual, procedure, Italian, safety, conflicting documents, prompt injection, unanswerable. Each question lists expected keywords and the gold document/page (`eval/questions.jsonl`).
+
+Four metrics are reported separately, for both search methods. Configuration: chunk 800 / overlap 120, top-k 5, offline extractive engine; minimum similarity 0.05 (keyword) and 0.25 (semantic).
+
+| Metric | Keyword (default) | Semantic |
+|---|---|---|
+| Retrieval hit@1 (a gold page is ranked first) | 0.97 | 0.77 |
+| Retrieval hit@3 / hit@5 | 1.00 / 1.00 | 0.94 / 1.00 |
+| Retrieval MRR | 0.98 | 0.87 |
+| Answer correct (expected keywords present, no forbidden content), answerable questions | 0.89 (31/35) | 0.86 (30/35) |
+| Citation hit (a cited page is a gold page), answered questions | 1.00 | 1.00 |
+| Citation precision (cited pages that are gold) | 0.99 | 0.99 |
+| Correct abstention on unanswerable questions | 0.88 (7/8) | 0.88 (7/8) |
+| False abstention on answerable questions | 0.09 (3/35) | 0.11 (4/35) |
+
+**The trade-off is real.** Raising the extractive engine's overlap threshold makes it refuse more unanswerable questions but also more answerable ones (columns: answer correct / correct abstention / false abstention):
+
+| min overlap | Keyword | Semantic |
+|---|---|---|
+| 0.40 | 0.91 / 0.50 / 0.06 | 0.89 / 0.38 / 0.09 |
+| 0.45 | 0.91 / 0.50 / 0.06 | 0.89 / 0.50 / 0.09 |
+| **0.50 (default)** | 0.89 / 0.88 / 0.09 | 0.86 / 0.88 / 0.11 |
+| 0.55 | 0.74 / 0.88 / 0.23 | 0.69 / 0.88 / 0.29 |
+| 0.60 | 0.69 / 1.00 / 0.29 | 0.63 / 1.00 / 0.34 |
+
+For maintenance documentation a wrong answer is worse than a refusal, which is why the default sits where refusals jump (0.50).
+
+**What the evaluation showed**
+
+- **The keyword search beats the neural one on this benchmark, and that proves less than it seems.** I wrote the questions myself, reusing words from the manuals, which favours word matching. A neural model should do better when the question paraphrases the manual; that is unmeasured here. Real manuals and real questions are needed to compare the two fairly.
+- Similarity alone does **not** separate "no answer" from "answer": unanswerable questions on a covered topic score as high as answerable ones. The similarity threshold only catches off-topic questions. Refusing on-topic questions requires the answering engine to notice that the specific fact is missing.
+- Observed errors in the default (keyword) run:
+  - 3 false abstentions (q07 "which grease", q23 "che olio si usa", q27 "cosa fare quando compare l'allarme E02"): the question shares too few words with the sentence that answers it, and the offline engine cannot paraphrase.
+  - 1 wrong answer on an answerable question (q21, "portata del compressore C-50"): it quoted a different sentence than the one holding the value.
+  - 1 unanswerable question was answered (q37, "peso del compressore C-50"): it quoted a sentence that shares the product name but not the asked fact.
+- The conflict and injection questions behave as intended: both conflicting values are reported with their citations, and the injected "100 bar" never reaches the answer.
+- A bug found by the evaluation and fixed: the first version dropped a whole passage when it contained one injected sentence, which also discarded legitimate facts next to it (fire assembly point, emergency number). Only the suspicious sentences are removed now.
+- A weakness found by looking at errors: the offline engine missed word forms ("lubricated" vs "Lubricate"). Sharing one crude stemmer between search and engine, and treating "often" as a question word, raised answer correctness. Those two changes were made after seeing these very errors, so the benchmark is no longer an independent test of them.
+
+## Hard questions and the Ctrl+F baseline
+
+The 43 questions above reward finding a sentence, which plain text search also does. To check what the assistant adds, `eval/hard_questions.jsonl` has 18 questions (16 answerable, 2 not) that need more than that: paraphrase, combining several pages or documents, diagnosing from symptoms, comparing, listing, judging a number against a limit, and asking in one language about a manual in another. Each lists the facts a correct answer must contain (groups of acceptable alternatives) and every page it needs.
+
+`python -m rag_assistant.evaluation --questions eval/hard_questions.jsonl --baseline` also simulates Ctrl+F (`baselines.py`): "whole question" = pages containing every content word of the question typed exactly; "rarest word" = a person who types only the most distinctive word that exists in the documents (generous: it assumes they already know which word works).
+
+| | Ctrl+F, whole question | Ctrl+F, rarest word | Assistant, keyword | Assistant, semantic |
+|---|---|---|---|---|
+| Finds **all** pages the answer needs | 0/16 | 11/16 (1.2 pages to read) | 13/16 (5 passages shown) | 13/16 |
+| Answer **correct** (offline engine) | - | - | 2/16 | 2/16 |
+| Refused although the answer is in the documents | - | - | 12/16 | 12/16 |
+| Unanswerable questions correctly refused | - | - | 1/2 | 1/2 |
+
+What this shows, for the offline extractive engine:
+
+- **Finding the right pages is not the problem; answering is.** The pages are found in 13 of 16 cases, yet only 2 are answered correctly: the control question (which a plain search also answers) and one symptom diagnosis, which became correct when the engine started quoting the sentence after the best one as well. This is expected: the engine only copies a few sentences from the sources, so it cannot combine pages, judge a number (5 mm/s against a 4.5 mm/s limit), list tasks, compare two machines or translate.
+- **The retrieval advantage over a careful Ctrl+F is small** (13 vs 11 of 16, and the corpus is 11 pages, so 5 passages are almost half of it).
+- **Two answers are confidently wrong or off target:** "Can the P-200 pump water at 95 degC?" got the sentence "single-stage centrifugal pump for process water", and the question about the *available* NPSH got the *required* NPSH. A generative model must not make this kind of mistake worse.
+- This set is the bar to beat when a generative (local) model is added: the same questions, the same scoring.
+
+How much to trust this: 16 answerable questions written by the author over invented documents; scoring is by keyword groups and is stricter than a human reader (e.g. quoting the 4.5 mm/s limit without saying "not acceptable" counts as incorrect). The keyword and semantic columns match by coincidence in these totals; the retrieved pages differ per question.
+
+## Tried on a real manual (dental unit)
+
+The benchmarks above are synthetic. I also ran the assistant on one real document: the operator's manual of a dental unit (110 pages, English, about 520 images). The PDF is not in this repository. I wrote 12 plain questions with the page that answers each (`right page first` / `in top-5` below), and for 9 of them a fact the answer must contain (`useful answer`; the other 3 are answered by a figure or diagram that is not extractable). I checked the facts myself, strictly. The first version struggled even on basic questions, and looking at the failures showed four generic causes, each fixed in the code:
+
+| What went wrong | Fix |
+|---|---|
+| Table-of-contents pages took 8 of the 60 top-5 slots: they repeat every title, so they match almost any question | Pages that look like an index (many `.....  12` entries) are not indexed; the app lists which pages were left out |
+| Common words ("unit", "system") counted as much as the distinctive ones | Keyword search weights each word by how rare it is in the loaded documents (IDF); the weights are refitted when a document is added or removed |
+| Chunks of 400 characters cut procedures in half | Default 800 / overlap 120 (400 gave 5 useful answers of 9, 800 gave 6) |
+| The offline engine quoted one sentence, which is often the sentence before the actual value or step | It also quotes the sentence that follows the best one |
+
+| 12 questions, 110-page manual | Keyword, before | Keyword, after | Semantic, before | Semantic, after |
+|---|---|---|---|---|
+| Right page ranked first | 5/12 | 8/12 | 8/12 | 8/12 |
+| Right page in the top 5 | 11/12 | 11/12 | 8/12 | 9/12 |
+| Useful answer (of the 9 with a checkable fact) | 4/9 | 7/9 | 3/9 | 5/9 |
+| Index pages among the 60 retrieved slots | 8 | 2 | 5 | 2 |
+
+"Before" is the original configuration (chunks of 400/80, index pages kept, no word weights, one-sentence answers), rebuilt from the current code and re-measured. Five questions about things the manual does not cover (price, manufacturer's CEO, changing a tyre, capital of France, dentists in Italy) were all refused after the fixes; I did not run them on the "before" configuration.
+
+How much to trust this: one manual, 12 questions, facts checked by the author, and the four fixes were chosen **after** seeing these failures, so the "after" column is not an independent test (the synthetic benchmarks were re-run and did not get worse). Still failing: a question that says "maintained" does not match a page that says "maintenance" (the crude stemmer cuts at 6 letters; 5 and 7 were tried and were not better); a sterilisation question gets the cycle parameters instead of the maximum temperature; and the second page of the index is only partly detected.
+
+## Groq: what was checked, and one live run
+
+Choose **Free test engine (Groq)** in the sidebar and paste a free key from [console.groq.com/keys](https://console.groq.com/keys), or set `GROQ_API_KEY` in the environment. The default model is `openai/gpt-oss-120b`; change it in the sidebar box or with `GROQ_MODEL`. **Groq retires models**: my first default, `llama-3.3-70b-versatile`, was shut down on 16 Aug 2026 (Groq's deprecations page) and the first live try failed with `HTTP 404`. On a 404 or 400 the error now quotes the service's own message and lists the models your key can use. The code speaks the standard OpenAI chat dialect (`llm.py`, `OpenAICompatibleProvider`), so another host that offers it only needs a base URL and a key.
+
+What was and was not checked:
+
+- **Checked on Groq's official pages:** the endpoint (`https://api.groq.com/openai/v1/chat/completions`), bearer authentication, the model list and deprecations, `reasoning_effort` and `include_reasoning` for the gpt-oss models (sent as `low` and `false` so the answer fits the token budget) and that limits apply per organization. Whether a free plan can use `gpt-oss-120b` is not shown there. Its free-plan numbers are only visible in the Groq console, so the free limits are **not** known here. Earlier in this project Groq's published terms were read as: no retention of prompts by default and no training on customer data.
+- **Why only Groq:** on the pages I read, OpenRouter's free models may be served by providers that train on prompts, Mistral's free "Experiment" plan may use requests to train its models, and, according to summaries of Google's terms (the official page would not open for me), the free Gemini tier is not meant for an app offered to people in the EEA. For company manuals those are poor defaults.
+- **Tested offline** against a fake local server (request shape, errors, citation verification), and **once live** on 29 Oct 2026 (below).
+
+### One live run: a coffee-machine manual, `openai/gpt-oss-120b` on Groq's free plan
+
+40-page Italian operator's manual of an automatic coffee machine (not in this repository), 12 questions I wrote with the facts a good answer needs, plus 3 questions it does not cover. Same questions, same code, only the search changes. Answers graded by me, reading each one against the manual text.
+
+| | Offline engine, keyword | Offline engine, neural | Groq, keyword | Groq, neural |
+|---|---|---|---|---|
+| Useful answers (12) | 5 | 2 | **10** | 7 (+2 partly right) |
+| Out-of-manual questions refused (3) | 3 | 3 | 3 | 3 |
+
+- **A language model fixes most of the answering problem** (5 → 10 with keyword search). Neural search still trails keyword search here, as the evidence it hands to the model predicted (right page in the passages: 8 of 12 against 11 of 12).
+- **Failures worth knowing:** "which milk?" got a confident, cited but irrelevant answer (the right passage was never retrieved and the model did not refuse); another answer turned "the insulated container keeps cold milk cold for a few hours" into advice to leave milk in the fridge for hours; a correct 21-minute answer added a false "contradiction" with a 19-minute phase; keyword search refused "how much does it weigh?" and neural search refused two questions that keyword search answered.
+- **Two citation styles the checker did not understand** (`【S3】` and `[ S3 ]`) made correct, cited answers look unverifiable until they were fixed; both are now normalised and tested.
+- **Not checked:** one manual, my own questions, one run (the model is not fully deterministic), and the free plan hit its rate limit 4 times in 30 calls, which the app reports as an error without retrying.
+- The passages found in your documents leave the server for Groq, as with Claude. The sidebar says so.
+
+## Limitations (please read)
+
+- **Small, synthetic, self-written benchmark.** 43 questions over 11 chunks. hit@5 = 1.00 is nearly trivial when the corpus has 11 chunks; hit@1 is the more informative number. These results do **not** show the system is reliable on real manuals; the one real manual I tried (see above) is 12 questions on one document, with 2 of the 9 checkable answers still not useful.
+- **The neural model was trained on short texts.** `paraphrase-multilingual-MiniLM-L12-v2` has a `max_seq_length` of 128 word pieces (from its model card); FastEmbed truncates at 512. Chunks of 800 characters have a median of 184 pieces on the real manual I tried (72% above 128, none above 512). I did not measure separately whether this hurts meaning search.
+- **Diagrams and images are invisible.** Only extractable text is indexed; a manual whose answer is in a figure (the one I tried has about 520 images) cannot be answered from that figure.
+- **Thresholds and word lists were tuned on the same questions used to report results**, so the numbers are optimistic. A proper evaluation needs a separate test set from real documents.
+- **Keyword search does not understand meaning:** it fails on synonyms and paraphrases and cannot match a question in one language with a document in another. The neural mode handles those in principle, at a memory cost that sits at the edge of what a free public server guarantees.
+- **The Claude engine was not evaluated** against the live API here. Expected to be better at paraphrase and refusals, but that is unmeasured.
+- The extractive engine cannot paraphrase, translate or combine facts.
+- **No OCR.** Scanned PDFs are rejected with a clear message. Tables and multi-column layouts are extracted as plain text and may lose structure.
+- No persistence: the index lives in the session and is rebuilt on restart. Exact search will not scale to very large collections.
+- Prompt-injection defences are heuristic (pattern matching + prompt design) and can be bypassed.
+- Memory figures were measured on Windows; Linux servers may differ.
+- Not for safety-critical decisions: always verify against the cited page.
+
+## Privacy and data handling
+
+What the app does with an uploaded PDF:
+
+- It is held **in the server's memory** for the session. The code never writes uploaded files, extracted text or questions to disk or to a database, and it does not log them.
+- It is discarded in three ways: **(1)** when the user presses **Delete all documents now**; **(2)** after **15 minutes without interaction** while the page is open (`DOC_IDLE_MINUTES`, `0` disables it); **(3)** about **15 to 20 seconds after the page is closed** or the session otherwise disconnects.
+- Streamlit's own server-side copy of an uploaded file is deleted as soon as the app has read it.
+
+Why (3) needs its own mechanism, measured on Streamlit 1.66 with an 8 MB upload: closing a tab does **not** free its data. Streamlit keeps the disconnected session (state and uploaded files) for `server.disconnectedSessionTTL` seconds (120 by default) and, even after that, drops it only lazily, when *another* session disconnects. With a 5-second TTL the closed session was still in memory more than 10 seconds later, and was freed only when the next session closed. On a quiet demo, the manual of the last visitor could therefore stay in memory for a long time. Also, resetting the upload widget does not free the uploaded file either.
+
+So the documents live in a store of this project (`workspace.py`) instead of Streamlit's session state. A background thread checks every 2 seconds whether each session is still connected (`Runtime.is_active_session`) and, 15 seconds after it stops being, empties its workspace in place (files, extracted text, search index). In a local run with the real app, the process's private memory went back from 2055 MB to its initial 2046 MB about 19 seconds after the tab was closed.
+- Upload is blocked until the user ticks a confirmation that the documents are not confidential and may be used for the test.
+- With the **Claude** engine, the retrieved passages (not the whole file) are sent to Anthropic's API to write the answer. The app says so when that engine is selected. The offline engine sends nothing anywhere.
+
+What this does **not** guarantee:
+
+- **It was measured locally on Windows, not on Streamlit Community Cloud.** The mechanism relies on the same Streamlit calls there, but its behaviour on that platform is unverified.
+- Refreshing the page or a network drop longer than 15 seconds ends the session's documents: they must be uploaded again.
+- Python may keep freed memory for reuse instead of returning it to the operating system; the figure above is from Windows. The data is unreachable by the app after cleanup, but this is not a secure-erase guarantee (no memory wiping).
+- On a public demo the app runs on a **third-party hosting platform** that this project does not control; its own logging and retention are outside the app's reach and were not verified here.
+- A disclaimer informs users, it does not make an upload safe, and it is not legal advice. For confidential manuals, run the app on your own machine or server (keyword search and the offline engine need no internet) instead of using a public demo.
+- **A public Community Cloud app cannot be hidden from search engines.** Streamlit's [documentation](https://docs.streamlit.io/deploy/streamlit-community-cloud/share-your-app/indexability) says public apps are indexed automatically (private apps are not), and there is no setting to opt out. Not publishing the URL reduces discovery, but it is not access control. Two ways to restrict access: make the app **private** in the Streamlit sharing settings (viewers sign in with an invited email), or set an **`APP_PASSWORD`** (environment variable or Streamlit secret): the app then shows only a password box until it is typed. The password is a single shared secret without rate limiting, so it keeps casual visitors out; it is not strong authentication and does not change where the data is processed.
+- A file being findable on a search engine does not mean it is free to redistribute: copyright still applies. For that reason no third-party manual is bundled in this repository.
+
+## Deploying a public demo on Streamlit Community Cloud
+
+1. Push the repository to GitHub (check that `.env` is not tracked).
+2. On [share.streamlit.io](https://share.streamlit.io) create an app from the repo: main file `app/streamlit_app.py`; dependencies are read from `requirements.txt`.
+3. Keep **keyword search** as the default: the neural mode is borderline for the free memory limit (see Design decisions).
+
+A public demo is visible to anyone with the URL: use only non-confidential documents. Users can paste their own API key in the sidebar (the "How it works" tab explains what the key is, what a request costs and what is sent to Anthropic); do not put your key in the app's public configuration.
+
+## Commands for tests and evaluation
+
+```bash
+pytest                         # 328 tests, offline, no API key
+ruff check . && ruff format --check .
+python -m rag_assistant.evaluation --search keyword  --out eval/results_keyword.json
+python -m rag_assistant.evaluation --search semantic --out eval/results_semantic.json   # needs the model
+python -m rag_assistant.evaluation --questions eval/hard_questions.jsonl --baseline   # hard set + Ctrl+F
+python scripts/make_sample_pdfs.py                            # regenerate the sample PDFs
+```

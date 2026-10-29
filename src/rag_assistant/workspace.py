@@ -4,7 +4,7 @@ Why not leave this in Streamlit's session state? When a browser tab closes, Stre
 the session (state and uploaded files) in memory for `server.disconnectedSessionTTL`
 seconds (120 by default) and only drops it lazily, when some other session disconnects.
 On a quiet demo that can mean a closed session's documents stay in memory for a long time
-(measured, see README). Here the documents live in a store of our own, and a small
+(measured, see docs/DETAILS.md). Here the documents live in a store of our own, and a small
 background thread discards a workspace a few seconds after its session stops being active.
 
 This module does not import Streamlit: whether a session is still connected is injected.

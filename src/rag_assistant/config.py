@@ -3,11 +3,11 @@
 import os
 
 # 800 characters (~130 words): a procedure of a few steps fits in one chunk. Measured on a
-# real 110-page manual: 400 gave 5 useful answers out of 9, 800 gave 6 (see README).
+# real 110-page manual: 400 gave 5 useful answers out of 9, 800 gave 6 (see docs/DETAILS.md).
 DEFAULT_CHUNK_SIZE = 800
 DEFAULT_CHUNK_OVERLAP = 120
 DEFAULT_TOP_K = 5
-# Minimum cosine similarity for a passage to count as evidence (tuned in eval, see README).
+# Minimum cosine similarity for a passage to count as evidence (tuned in eval, see docs/DETAILS.md).
 DEFAULT_MIN_SCORE = 0.25  # semantic (neural) search
 # Cosine scores are not comparable across embedders: each has its own sensible threshold.
 # Keyword scores are lower since the word weights (IDF) were added: re-tuned from 0.10.
