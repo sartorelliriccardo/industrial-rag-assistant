@@ -81,23 +81,83 @@ Technical details are in the **Architecture** tab, and how well it works is in t
 """,
         "tab_arch": "Architecture",
         "arch_title": "Architecture: how it works",
-        "arch_intro": "Two flows share the same index: ingestion runs once per PDF, the question flow runs every time you ask. Under each step you can see the code module that implements it.",
+        "arch_intro": "One step of the system changes with the search (keywords or neural network) and the last step changes with the answer engine (offline, Groq or Claude). They are explained one at a time: first keywords, then the neural network, then both together with Groq. Under each box you can see the code module behind it.",
+        "arch_sub_kw": "Keywords",
+        "arch_sub_nn": "Neural network",
+        "arch_sub_groq": "Both + Groq",
+        "arch_legend": "Blue: the search index. Green: the answer. Amber: the system declines. Purple: the question and the passages leave the server.",
         "cluster_ingest": "Ingestion (once per PDF)",
         "cluster_query": "Every question",
         "flow_upload": "PDF upload",
         "flow_pages": "Pages + page numbers",
+        "flow_toc": "Index pages left out",
         "flow_chunks": "Overlapping chunks",
-        "flow_vectors": "Embeddings (vectors)",
+        "flow_kw_words": "Stemmed words, no filler words",
+        "flow_kw_idf": "Weight by rarity (IDF)",
+        "flow_kw_vector": "Vector of 4096 slots (hash)",
+        "flow_kw_same": "Same words and weights",
+        "flow_nn_pieces": "Word pieces",
+        "flow_nn_layers": "12 layers: 384 numbers",
+        "flow_nn_q": "Same model: 384 numbers",
         "flow_index": "Vector index (cosine)",
         "flow_question": "Question",
-        "flow_embed_q": "Embed the question",
         "flow_search": "Top-k similar passages",
+        "flow_thr_kw": "Similarity threshold 0.05",
+        "flow_thr_nn": "Similarity threshold 0.25",
+        "flow_g_found": "Passages from either search",
         "flow_filter": "Threshold + injection filter",
         "flow_prompt": "Prompt: rules + sources",
-        "flow_engine": "Offline or Claude engine",
+        "flow_g_call": "Groq API (temperature 0)",
+        "flow_g_norm": "One citation style",
         "flow_verify": "Citation check",
         "flow_answer": "Answer + sources",
         "flow_no": "Not enough information",
+        "arch_kw_md": """
+### Keyword search, step by step
+It uses no model: it compares **words**. It is the default search.
+
+1. **Each word is simplified.** Filler words ("the", "of", "that") are dropped and only the first 6 letters of each word are kept, so "decalcificare" and "decalcificazione" match.
+2. **Rare words weigh more** in your documents (this is called IDF): "decalcificazione" counts for more than "apparecchio".
+3. **Each text becomes a list of 4096 numbers.** Every word lands in a fixed slot (a calculation called a hash) and the number written there is its weight.
+4. **Question and passages are compared with the cosine** (how much the two lists point in the same direction). Only passages above the threshold of 0.05 are used.
+
+**Strengths:** light (the whole app uses about 225 MB, measured on my PC), no download, exact on codes, numbers and technical terms.
+**Limits:** it does not understand synonyms or other languages, and a different form of a word ("pesa" against "peso") may not match.
+""",
+        "arch_nn_md": """
+### Neural-network search, step by step
+It uses a small model (`paraphrase-multilingual-MiniLM-L12-v2`, compressed to 8 bits) that compares **meanings**, not words. You switch it on in the sidebar.
+
+1. **The text is cut into word pieces** (the vocabulary has about 250,000); rare words are split.
+2. **The pieces go through 12 layers.** In each layer every piece "looks at" the others and updates itself.
+3. **The pieces are averaged** into **384 numbers** per text, then scaled to length 1.
+4. **Question and passages are compared with the cosine**, as before. The threshold is 0.25.
+
+**Where it runs:** on the app's server, on the CPU. The file is about 118 MB (downloaded from Hugging Face the first time) and it needs about 400 MB more memory.
+**Strengths:** it understands synonyms and a question in one language about a manual in another (in my synthetic test, an Italian question about an English manual was found only by it).
+**Limits:** it is less exact on codes, numbers and error messages. On the coffee-machine manual it missed an English error message. It was trained on short texts (up to 128 pieces) and the passages here have about 180.
+""",
+        "arch_groq_md": """
+### Both searches + Groq
+Groq does not search: it **writes the answer**. It works with either search, which hands it the passages.
+
+1. **After the search**, the passages above the threshold are kept (usually 5) and sentences that look like hidden instructions are removed.
+2. **The message is built:** fixed rules ("answer only from the sources", "cite [S1]", "if it is not enough, reply INSUFFICIENT_EVIDENCE"), the numbered passages S1…Sn, and the question.
+3. **The Groq API is called** (default model `openai/gpt-oss-120b`, temperature 0). **Leaving the server:** the question, the passages found and your key. Not the PDF.
+4. **The citations the model wrote are brought to one style** (`【S3】`, `[ S3 ]`, `[S1, S2]` become `[S3]`), each source is checked to exist and replaced with document and page.
+5. If the model replies INSUFFICIENT_EVIDENCE, the answer is "not enough information". If it cites nothing, the answer is shown as "unverifiable".
+
+**What I measured** (one coffee-machine manual, 12 questions, graded by me):
+
+| | Keywords | Neural network |
+|---|---|---|
+| Right page among the passages sent | 11/12 | 8/12 |
+| Useful answers, offline engine | 5/12 | 2/12 |
+| Useful answers, Groq | 10/12 | 7/12 (+2 partly right) |
+| Out-of-manual questions declined | 3/3 | 3/3 |
+
+The model cannot use what the search does not hand it: if the right passage is missing it may answer wrongly and confidently (it happened with "which milk should I use?"). It is one manual: it does not show the same holds for others.
+""",
         "arch_md": """
 ### Components
 
@@ -109,7 +169,7 @@ Technical details are in the **Architecture** tab, and how well it works is in t
 | Index | `index.py` | FAISS (exact inner-product index) | Stores the vectors; with unit vectors the inner product is the cosine similarity |
 | Retrieval | `retrieval.py` | - | Finds the top-k most similar passages with their score |
 | Generation | `generation.py`, `prompts.py` | - | Applies the score threshold, removes injected instructions, builds the constrained prompt and verifies the citations |
-| Answer engine | `llm.py` | Offline extractive engine or Anthropic API | Writes the answer from the evidence only; swappable through a one-method interface |
+| Answer engine | `llm.py` | Offline extractive engine, Groq (free test key) or Anthropic API | Writes the answer from the evidence only; swappable through a one-method interface |
 | Evaluation | `evaluation.py` | - | Four separate metrics on 43 questions: retrieval, correctness, citations, refusals |
 | Interface | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Upload, answer, sources, page preview, evaluation view |
 
@@ -227,23 +287,83 @@ I dettagli tecnici sono nella scheda **Architettura**, e quanto funziona bene ne
 """,
         "tab_arch": "Architettura",
         "arch_title": "Architettura: come funziona",
-        "arch_intro": "Due flussi condividono lo stesso indice: il caricamento avviene una volta per PDF, il flusso della domanda a ogni richiesta. Sotto ogni passaggio vedi il modulo di codice che lo realizza.",
+        "arch_intro": "Un passo del sistema cambia con la ricerca (parole chiave o rete neurale) e l'ultimo passo cambia con il motore di risposta (offline, Groq o Claude). Sono spiegati uno alla volta: prima le parole chiave, poi la rete neurale, poi le due insieme con Groq. Sotto ogni riquadro vedi il modulo di codice che lo realizza.",
+        "arch_sub_kw": "Parole chiave",
+        "arch_sub_nn": "Rete neurale",
+        "arch_sub_groq": "Le due + Groq",
+        "arch_legend": "Blu: l'indice di ricerca. Verde: la risposta. Ambra: il sistema rifiuta. Viola: la domanda e i passaggi escono dal server.",
         "cluster_ingest": "Caricamento (una volta per PDF)",
         "cluster_query": "A ogni domanda",
         "flow_upload": "Caricamento PDF",
         "flow_pages": "Pagine + n. di pagina",
-        "flow_chunks": "Chunk sovrapposti",
-        "flow_vectors": "Embedding (vettori)",
+        "flow_toc": "Pagine d'indice escluse",
+        "flow_chunks": "Pezzi sovrapposti",
+        "flow_kw_words": "Parole accorciate, senza parole vuote",
+        "flow_kw_idf": "Peso per rarità (IDF)",
+        "flow_kw_vector": "Vettore di 4096 posizioni (hash)",
+        "flow_kw_same": "Stesse parole e stessi pesi",
+        "flow_nn_pieces": "Pezzi di parola",
+        "flow_nn_layers": "12 strati: 384 numeri",
+        "flow_nn_q": "Stesso modello: 384 numeri",
         "flow_index": "Indice vettoriale (coseno)",
         "flow_question": "Domanda",
-        "flow_embed_q": "Vettorizza la domanda",
         "flow_search": "Top-k passaggi simili",
+        "flow_thr_kw": "Soglia di somiglianza 0,05",
+        "flow_thr_nn": "Soglia di somiglianza 0,25",
+        "flow_g_found": "Passaggi dall'una o dall'altra ricerca",
         "flow_filter": "Soglia + filtro injection",
         "flow_prompt": "Prompt: regole + fonti",
-        "flow_engine": "Motore offline o Claude",
+        "flow_g_call": "API Groq (temperatura 0)",
+        "flow_g_norm": "Uno stile solo di citazioni",
         "flow_verify": "Verifica delle citazioni",
         "flow_answer": "Risposta + fonti",
         "flow_no": "Informazioni insufficienti",
+        "arch_kw_md": """
+### La ricerca per parole chiave, passo per passo
+Non usa nessun modello: confronta **parole**. È la ricerca predefinita.
+
+1. **Ogni parola viene semplificata.** Si tolgono le parole vuote («il», «di», «che») e si tengono solo le prime 6 lettere di ogni parola, così «decalcificare» e «decalcificazione» coincidono.
+2. **Le parole rare pesano di più** nei tuoi documenti (si chiama IDF): «decalcificazione» conta più di «apparecchio».
+3. **Ogni testo diventa un elenco di 4096 numeri.** Ogni parola finisce in una posizione fissa (con un calcolo chiamato hash) e il numero scritto lì è il suo peso.
+4. **Domanda e passaggi si confrontano con il coseno** (quanto i due elenchi puntano nella stessa direzione). Si usano solo i passaggi sopra la soglia di 0,05.
+
+**Punti di forza:** leggera (tutta l'app usa circa 225 MB, misurati sul mio PC), nessun download, esatta su codici, numeri e termini tecnici.
+**Limiti:** non capisce sinonimi né altre lingue, e una forma diversa della parola («pesa» contro «peso») può non combaciare.
+""",
+        "arch_nn_md": """
+### La ricerca con la rete neurale, passo per passo
+Usa un piccolo modello (`paraphrase-multilingual-MiniLM-L12-v2`, compresso a 8 bit) che confronta **significati**, non parole. Si attiva dalla barra laterale.
+
+1. **Il testo si divide in pezzi di parola** (il vocabolario ne ha circa 250.000); le parole rare vengono spezzate.
+2. **I pezzi passano in 12 strati.** In ogni strato ogni pezzo «guarda» gli altri e si aggiorna.
+3. **Si fa la media dei pezzi** e si ottengono **384 numeri** per testo, poi portati a lunghezza 1.
+4. **Domanda e passaggi si confrontano con il coseno**, come prima. La soglia è 0,25.
+
+**Dove gira:** sul server dell'app, sulla CPU. Il file pesa circa 118 MB (la prima volta si scarica da Hugging Face) e richiede circa 400 MB di memoria in più.
+**Punti di forza:** capisce sinonimi e una domanda in una lingua su un manuale in un'altra (nel mio test sintetico una domanda in italiano su un manuale in inglese l'ha trovata solo lui).
+**Limiti:** è meno esatta su codici, numeri e messaggi di errore. Sul manuale della macchina da caffè ha mancato un messaggio di errore in inglese. È stata addestrata su testi brevi (fino a 128 pezzi) e qui i passaggi ne hanno circa 180.
+""",
+        "arch_groq_md": """
+### Le due ricerche + Groq
+Groq non cerca: **scrive la risposta**. Funziona con entrambe le ricerche, che gli passano i passaggi.
+
+1. **Dopo la ricerca** restano i passaggi sopra la soglia (di solito 5) e si tolgono le frasi che sembrano istruzioni nascoste.
+2. **Si costruisce il messaggio:** regole fisse («rispondi solo dalle fonti», «cita [S1]», «se non basta rispondi INSUFFICIENT_EVIDENCE»), i passaggi numerati S1…Sn e la domanda.
+3. **Si chiama l'API di Groq** (modello predefinito `openai/gpt-oss-120b`, temperatura 0). **Escono dal server:** la domanda, i passaggi trovati e la tua chiave. Non il PDF.
+4. **Le citazioni scritte dal modello si riportano a uno stile solo** (`【S3】`, `[ S3 ]`, `[S1, S2]` diventano `[S3]`), si controlla che ogni fonte esista e la si sostituisce con documento e pagina.
+5. Se il modello risponde INSUFFICIENT_EVIDENCE, la risposta è «informazioni insufficienti». Se non cita nulla, la risposta è mostrata come «non verificabile».
+
+**Cosa ho misurato** (un manuale di macchina da caffè, 12 domande, valutate da me):
+
+| | Parole chiave | Rete neurale |
+|---|---|---|
+| Pagina giusta tra i passaggi inviati | 11/12 | 8/12 |
+| Risposte utili, motore offline | 5/12 | 2/12 |
+| Risposte utili, Groq | 10/12 | 7/12 (+2 in parte giuste) |
+| Domande fuori manuale rifiutate | 3/3 | 3/3 |
+
+Il modello non può usare ciò che la ricerca non gli passa: se manca il passaggio giusto può rispondere in modo sbagliato e sicuro (è successo con «che latte devo usare?»). È un solo manuale: non dimostra che valga lo stesso per altri.
+""",
         "arch_md": """
 ### Componenti
 
@@ -255,7 +375,7 @@ I dettagli tecnici sono nella scheda **Architettura**, e quanto funziona bene ne
 | Indice | `index.py` | FAISS (indice esatto a prodotto scalare) | Conserva i vettori; con vettori unitari il prodotto scalare è la similarità coseno |
 | Ricerca | `retrieval.py` | - | Trova i top-k passaggi più simili con il loro punteggio |
 | Generazione | `generation.py`, `prompts.py` | - | Applica la soglia di punteggio, toglie le istruzioni iniettate, costruisce il prompt vincolato e verifica le citazioni |
-| Motore di risposta | `llm.py` | Motore offline estrattivo o API Anthropic | Scrive la risposta solo dalle evidenze; sostituibile tramite un'interfaccia a un solo metodo |
+| Motore di risposta | `llm.py` | Motore offline estrattivo, Groq (chiave gratuita di prova) o API Anthropic | Scrive la risposta solo dalle evidenze; sostituibile tramite un'interfaccia a un solo metodo |
 | Valutazione | `evaluation.py` | - | Quattro metriche separate su 43 domande: ricerca, correttezza, citazioni, rifiuti |
 | Interfaccia | `app/streamlit_app.py`, `app/ui_*.py` | Streamlit | Caricamento, risposta, fonti, anteprima della pagina, vista della valutazione |
 

@@ -118,7 +118,7 @@ Barra laterale: lingua, metodo di ricerca, motore di risposta, parametri, confer
 - *Assistente*: la domanda e la risposta con fonti, anteprima della pagina e passaggi.
 - *Come funziona*: la spiegazione in parole semplici, per chi non è tecnico.
 - *Passo per passo*: la scheda da usare in un colloquio. Scrivi una domanda e per ognuna delle nove fasi vedi i dati veri: le parole tenute (stemming), i pezzi, dove cade ogni parola nel vettore, la classifica con la soglia, le frasi nascoste rimosse, il prompt esatto, l'uscita grezza del motore e il controllo delle citazioni. Con il PDF che contiene la frase «ignore all previous instructions» si vede il filtro in azione.
-- *Architettura*: i due flussi, i moduli e le scelte.
+- *Architettura*: tre parti, ciascuna con il suo schema (ricerca per parole chiave, ricerca con la rete neurale, le due insieme a Groq), poi i moduli e le scelte.
 - *Valutazione*: i numeri e gli errori, compresi i limiti.
 
 **Colloquio.** *Mostrami come funziona.* → apri «Passo per passo» con una domanda e racconta le nove fasi seguendo lo schermo: è la dimostrazione che il sistema non è una scatola nera e che ogni numero può essere verificato.
