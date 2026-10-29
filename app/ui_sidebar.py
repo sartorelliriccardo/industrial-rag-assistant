@@ -67,11 +67,16 @@ def render_sidebar() -> Sidebar:
             st.caption(t(lang, "search_semantic_note"))
         provider_name = st.radio(
             t(lang, "engine"),
-            ["extractive", "anthropic"],
+            ["extractive", "groq", "anthropic"],
             format_func=lambda x: t(lang, f"engine_{x}"),
         )
         api_key = None
-        if provider_name == "anthropic":
+        if provider_name == "groq":
+            api_key = st.text_input(
+                t(lang, "api_key_groq"), type="password", help=t(lang, "api_key_groq_help")
+            )
+            st.warning(t(lang, "groq_privacy"))
+        elif provider_name == "anthropic":
             api_key = st.text_input(
                 t(lang, "api_key"), type="password", help=t(lang, "api_key_help")
             )

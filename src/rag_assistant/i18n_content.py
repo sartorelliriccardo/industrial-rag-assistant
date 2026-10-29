@@ -34,8 +34,9 @@ A tool that answers questions about your technical manuals (PDF) and **always sh
 
 *Example:* you ask "What is the tightening torque of the impeller nut?" → it finds page 3 of the pump manual → it answers "120 N.m" → it shows you page 3 with that sentence highlighted.
 
-### Two ways to answer
+### Three ways to answer
 - **Offline (default):** copies the best-matching sentences from the manual. Free, no account needed.
+- **Free test engine (Groq, optional):** a real language model writes the answer from the passages found. You need your own free key from Groq; the passages leave the server. Not tested against the live service yet.
 - **Claude (optional):** writes a more natural answer, using your own API key. Not tested yet in this project.
 
 ### Search "by meaning" (the neural part)
@@ -179,8 +180,9 @@ Uno strumento che risponde a domande sui tuoi manuali tecnici (PDF) e **mostra s
 
 *Esempio:* chiedi «Qual è la coppia di serraggio del dado della girante?» → trova la pagina 3 del manuale della pompa → risponde «120 N.m» → ti mostra la pagina 3 con quella frase evidenziata.
 
-### Due modi di rispondere
+### Tre modi di rispondere
 - **Offline (predefinito):** copia dal manuale le frasi che meglio corrispondono. Gratis, senza account.
+- **Motore di prova gratuito (Groq, opzionale):** un vero modello linguistico scrive la risposta dai passaggi trovati. Serve una tua chiave gratuita di Groq; i passaggi escono dal server. Non ancora provato sul servizio vero.
 - **Claude (opzionale):** scrive una risposta più naturale, con la tua chiave API. In questo progetto non è ancora stato provato.
 
 ### La ricerca «per significato» (la parte neurale)

@@ -1,10 +1,18 @@
 """LLM providers behind a one-method interface, so the vendor is easy to swap."""
 
+import json
 import math
 import os
+import urllib.error
+import urllib.request
 from typing import Protocol
 
-from rag_assistant.config import DEFAULT_ANTHROPIC_MODEL, enable_system_certificates
+from rag_assistant.config import (
+    DEFAULT_ANTHROPIC_MODEL,
+    DEFAULT_GROQ_MODEL,
+    GROQ_BASE_URL,
+    enable_system_certificates,
+)
 from rag_assistant.prompts import INSUFFICIENT_TOKEN, QUESTION_RE, SENTENCE_SPLIT, SOURCE_RE
 from rag_assistant.textutil import content_tokens
 
@@ -37,6 +45,97 @@ class AnthropicProvider:
             messages=[{"role": "user", "content": user}],
         )
         return "".join(block.text for block in message.content if block.type == "text").strip()
+
+
+class ProviderError(Exception):
+    """A hosted model refused or failed; the message is meant to be shown to the user."""
+
+
+class OpenAICompatibleProvider:
+    """Any host that speaks the OpenAI chat-completions dialect (Groq, OpenRouter, a local server).
+
+    Plain standard library on purpose: one POST, no extra dependency to install or audit.
+    """
+
+    HINTS = {
+        401: "the API key was rejected: check that it is correct and still active",
+        403: "the host refused the request (key without access to this model, or blocked)",
+        404: "model or address not found: check the model name",
+        429: "rate limit reached: free plans allow few requests per minute, wait and retry",
+    }
+
+    def __init__(
+        self,
+        api_key: str | None,
+        base_url: str,
+        model: str,
+        name: str = "openai-compatible",
+        max_tokens: int = 700,
+        timeout: float = 60.0,
+    ):
+        if not api_key:
+            raise ValueError(f"{name}: an API key is required")
+        self.api_key = api_key
+        self.base_url = base_url.rstrip("/")
+        self.model = model
+        self.name = name
+        self.max_tokens = max_tokens
+        self.timeout = timeout
+
+    def complete(self, system: str, user: str) -> str:
+        enable_system_certificates()
+        body = json.dumps(
+            {
+                "model": self.model,
+                "temperature": 0,
+                "max_completion_tokens": self.max_tokens,
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            }
+        ).encode("utf-8")
+        request = urllib.request.Request(
+            f"{self.base_url}/chat/completions",
+            data=body,
+            method="POST",
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                # some hosts block the default Python user agent
+                "User-Agent": "industrial-rag-assistant",
+            },
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                payload = json.load(response)
+        except urllib.error.HTTPError as exc:
+            detail = self.HINTS.get(exc.code, "the request failed")
+            raise ProviderError(f"{self.name}: HTTP {exc.code}, {detail}") from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise ProviderError(f"{self.name}: cannot reach the service ({exc})") from exc
+        try:
+            text = payload["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise ProviderError(f"{self.name}: unexpected response from the service") from exc
+        if not text or not text.strip():
+            raise ProviderError(
+                f"{self.name}: empty answer (a reasoning model may have spent every token "
+                "thinking: try another model)"
+            )
+        return text.strip()
+
+
+class GroqProvider(OpenAICompatibleProvider):
+    """Groq: free plan for tests (limits shown in the Groq console), key from console.groq.com."""
+
+    def __init__(self, api_key: str | None = None, model: str | None = None):
+        super().__init__(
+            api_key=api_key or os.environ.get("GROQ_API_KEY"),
+            base_url=os.environ.get("GROQ_BASE_URL", GROQ_BASE_URL),
+            model=model or os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL),
+            name="groq",
+        )
 
 
 def _tokens(text: str) -> set[str]:
@@ -110,4 +209,6 @@ def get_provider(name: str, api_key: str | None = None) -> LLMProvider:
         return ExtractiveProvider()
     if name == "anthropic":
         return AnthropicProvider(api_key=api_key)
-    raise ValueError(f"unknown LLM provider: {name!r} (use 'extractive' or 'anthropic')")
+    if name == "groq":
+        return GroqProvider(api_key=api_key)
+    raise ValueError(f"unknown LLM provider: {name!r} (use 'extractive', 'groq' or 'anthropic')")

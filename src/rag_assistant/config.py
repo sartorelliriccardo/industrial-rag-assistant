@@ -14,6 +14,10 @@ DEFAULT_MIN_SCORE = 0.25  # semantic (neural) search
 MIN_SCORE_BY_SEARCH = {"semantic": 0.25, "keyword": 0.05}
 EMBEDDING_MODEL = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 DEFAULT_ANTHROPIC_MODEL = "claude-haiku-5-5"
+# Groq speaks the OpenAI "chat completions" dialect. The model is a production text model in
+# Groq's docs (checked 29 Oct 2026); whether a free plan can use it is only shown in the console.
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile"
 
 
 def get_chunk_settings() -> tuple[int, int]:

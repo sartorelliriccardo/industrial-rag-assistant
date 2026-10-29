@@ -20,6 +20,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "engine_anthropic": "Claude (API key required)",
         "api_key": "Anthropic API key",
         "api_key_help": "Kept in memory only.",
+        "engine_groq": "Free test engine (Groq, free key required)",
+        "api_key_groq": "Groq API key",
+        "api_key_groq_help": "Kept in memory only. Create a free key at console.groq.com/keys.",
+        "groq_privacy": (
+            "With Groq, the passages found in your documents are sent to Groq's API to write "
+            "the answer. Free plans have low limits. Use the offline engine for anything "
+            "sensitive."
+        ),
         "need_key": "Enter an API key in the sidebar, or switch to the offline answer engine.",
         "params": "Retrieval parameters",
         "chunk_size": "Chunk size (chars)",
@@ -86,6 +94,14 @@ STRINGS: dict[str, dict[str, str]] = {
         "engine_anthropic": "Claude (serve una chiave API)",
         "api_key": "Chiave API Anthropic",
         "api_key_help": "Resta solo in memoria.",
+        "engine_groq": "Motore di prova gratuito (Groq, serve una chiave gratuita)",
+        "api_key_groq": "Chiave API Groq",
+        "api_key_groq_help": "Resta solo in memoria. Crea una chiave gratuita su console.groq.com/keys.",
+        "groq_privacy": (
+            "Con Groq, i passaggi trovati nei tuoi documenti vengono inviati all'API di Groq "
+            "per scrivere la risposta. I piani gratuiti hanno limiti bassi. Per qualsiasi cosa "
+            "sensibile usa il motore offline."
+        ),
         "need_key": "Inserisci una chiave API nella barra laterale, oppure scegli il motore offline.",
         "params": "Parametri di ricerca",
         "chunk_size": "Dimensione dei chunk (caratteri)",
